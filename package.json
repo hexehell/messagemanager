@@ -1,5 +1,5 @@
 {
-  "name": "messagesender",
+  "name": "messagemanager",
   "version": "1.0.0",
   "description": "",
   "main": "Main.ts",
