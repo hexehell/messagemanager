@@ -1,22 +1,84 @@
 import { Client as WwjsClient, Chat, MessageSearchOptions, Message, MessageMedia as MessageMediaWwjs } from "whatsapp-web.js";
 import { ChatFactory, SearchOptions } from "./Factories/interfaces/Chat.factory";
-import { Client } from "./Factories/interfaces/Client";
+import { ClientFactory, ClientEvents } from "./Factories/interfaces/Client";
 import { MessageAck, MessageFactory, MessageMedia, MessageTypes } from "./Factories/interfaces/Message.factory";
+import { EventEmitter } from "node:events";
+import {createSpinner} from 'nanospinner'
 
-export class ClientWwjs implements Client {
+export class ClientWwjs extends EventEmitter implements ClientFactory {
 
-    constructor(private wwjsClient: WwjsClient) { }
+    constructor(private wwjsClient: WwjsClient,private dataPath:string) {
+        super();
+
+        this.wwjsParsedEvents()
+    }
+     disconnect = async(): Promise<void>=> {
+
+
+
+        return await this.wwjsClient.destroy().then(()=>{
+            createSpinner('session closed').success()
+
+        }).catch((err:Error)=>{console.log(createSpinner(err.message).error())})
+    }
+
+    whereIsRunning= () => {
+        
+        
+
+        return this.dataPath
+    };
+
+    getPhone = () =>{
+
+        return this.wwjsClient.info.wid.user
+        
+    };
+
+    async initialize(): Promise<void> {
+
+        
+        this.wwjsClient.initialize()
+        this.emit(ClientEvents.init,this)
+   
+    }
+
+    clientSaved=()=>{
+
+        this.emit(ClientEvents.saved,this)
+
+    }
+
+    clientSavingError= (err:Error|string)=>{
+        this.emit(ClientEvents.saveError,err)
+    }
+
+
+
+
+    wwjsParsedEvents(){
+
+        this.wwjsClient.on(ClientEvents.qr,(qr:string)=>this.emit(ClientEvents.qr,qr))
+        this.wwjsClient.on(ClientEvents.ready,()=>this.emit(ClientEvents.ready,this))
+
+    }
 
     async getChats(): Promise<ChatFactory[]> {
         // throw new Error("Method not implemented.");
 
         return (await this.wwjsClient.getChats()).map((chat: Chat) => {
 
-            return new ChatWwjs(chat)
+            return (new ChatWwjs(chat)) as ChatFactory
 
         })
 
     }
+
+    // on(event: 'qr', listener: (
+    //     qr: string
+    //  ) => void): this
+ 
+    //  on(event: 'ready', listener: () => void): this
 
 }
 
@@ -45,7 +107,7 @@ export class ChatWwjs implements ChatFactory {
             return new MessageWwjs(message, this)
         })
     }
-    sendMessage() {
+    sendMessage():Promise<MessageFactory> {
         throw new Error("Method not implemented.");
     }
 

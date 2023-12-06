@@ -1,102 +1,50 @@
-import { Client, LocalAuth } from "whatsapp-web.js";
-import { ClientWwjs } from './transformers/Wwjs'
-import {  MessageOptions, SaveMessage, Seeker } from "./classes/Seeker";
-import { concatMap, take, toArray, from, concat, tap, of, distinct, scan, combineLatest, last, map, firstValueFrom } from "rxjs";
-import { MessageFactory } from "./transformers/Factories/interfaces/Message.factory";
-import { ChatFactory } from "./transformers/Factories/interfaces/Chat.factory";
+import inquirer, { QuestionCollection } from "inquirer";
+import { Observable, concatMap, from, fromEvent, of, repeat, retry, tap } from 'rxjs';
+import { ProgramCLI } from "./cli/classes/ProgramCLI";
+import { CliAction } from "./cli/interfaces/CliAction";
+import { CaptureInput } from "./cli/Commands/utils/CaptureInput";
+import { CLIProgram } from "./cli/classes/CLIProgram";
+
 
 const main = async () => {
 
-    // const palindromo =  (str:string)=>{
 
-    //     const strlower = Array.from(str.toLocaleLowerCase()).filter(char=>char!==' ').join('')
-    //     if(strlower.length<3)return false
-
-    //     for(let i=0;i<strlower.length/2;i++)
-    //         if(strlower[i]!==strlower[strlower.length-1-i]) return false
-
-    //         return true
-    // }
-
-    // const palabra = 'anita lava la tinae'
-
-    // console.log(`${palabra} ${palindromo(palabra)?'es':'no es'} un palindromo`)
-
-    // process.exit(0)
-
-    const qrcode = require('qrcode-terminal');
-
-    const client = new Client({ authStrategy: new LocalAuth({ clientId: "client-one" }) });
-
-    const clientTransformed = new ClientWwjs(client)
+    // new CaptureInput('a', true).inputCaptured().subscribe((val)=>console.log(val))
 
 
-    client.on('qr', qr => {
-        console.log(qr)
-        qrcode.generate(qr, { small: true });
-    });
+    console.clear()
 
-    client.on('ready', async () => {
+     const cli = new CLIProgram()
 
-        console.log('------------------------------------------------')
+     CLIProgram.setNextCommand(cli)
 
-        const seeker = new Seeker(clientTransformed)
+     CLIProgram.menuNext.subscribe({
+        next:async(options:CliAction)=>
+        await CLIProgram.nextCommand.manageOptions(options),
+        complete:()=>console.log('complete')
+     })
 
-        console.log(await seeker.actions.getAllSaveMessages())
+
+    // const program$ = cli.optionsStartScreen$().pipe(repeat())
 
 
 
-        // console.log(await seeker.actions.getAllContactMessages())
+    // program$.subscribe({
+    //     next: (val) => {
 
-        console.log('------------------------------------------------')
-
-        // const allChats$ = seeker.rx.getAllChats$();
-
-        // const contactChats$ = allChats$.pipe(concatMap((chats: ChatFactory[]) => seeker.rx.getAllContactChats$(chats)))
-        // const groupChats$ = allChats$.pipe(concatMap((chats: ChatFactory[]) => seeker.rx.getAllGroupChats$(chats)))
-
-        // const nonContactChat$ = allChats$.pipe(concatMap((chats: ChatFactory[]) => seeker.rx.getAllNonGroupNonContactChats$(chats)))
-
-        // const groupSaveMessagesEach$ =groupChats$.pipe(concatMap((chats: ChatFactory[]) => seeker.rx.getEachMessagesToSave$(chats,{getMedia:false,timeout:3000})))
-
-        // const ContactSaveMessagesEach$ =contactChats$.pipe(concatMap((chats: ChatFactory[]) => seeker.rx.getEachMessagesToSave$(chats,{getMedia:false,timeout:3000})))
-
-        // const NonContactSaveMessagesEach$ =nonContactChat$.pipe(concatMap((chats: ChatFactory[]) => seeker.rx.getEachMessagesToSave$(chats,{getMedia:false,timeout:3000})))
-        
-        // const allSaveMessages$ = seeker.rx.mergeSaveMessages$$([],[NonContactSaveMessagesEach$]).pipe(last())
-
-        // const groupSaveMessages$ = seeker.rx.mergeSaveMessages$([],groupSaveMessagesEach$).pipe(last())
-
-        // const groupMessages:SaveMessage[] = await firstValueFrom(groupSaveMessages$)
-
-        // const allSaveMessages$ = seeker.rx.mergeSaveMessages$(groupMessages,ContactSaveMessagesEach$).pipe(last())
-
-
-        // allSaveMessages$.subscribe((reIntetrate:SaveMessage[])=>{
-
-        //     console.log(reIntetrate)
-        // })
+    //         console.log(val)
+    //     },
+    //     error: (err) => console.log(err),
+    //     complete: () => console.log('complete')
+    // })
 
 
 
-        // const reIntegrate$ = seeker.rx.mergeSaveMessages$()
 
 
-        // const mediaMessages$ = waitIntegration$.pipe(map((messages:SaveMessage[])=>messages.filter(({manager}:SaveMessage)=>!!manager )))
 
-        //  waitIntegration$.subscribe((val)=>console.log(val))
-        // mediaMessages$.subscribe((val)=>console.log(val))
 
-        
-
-        // const groupSaveMessagesArray$ = groupSaveMessagesEach$.pipe(toArray())
-            
-          
-    })
-
-    client.initialize()
 
 }
-
 
 main()

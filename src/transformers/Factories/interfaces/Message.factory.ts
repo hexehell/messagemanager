@@ -1,10 +1,30 @@
 import { ChatFactory } from "./Chat.factory"
 import { ContactFactory } from "./Contact.factory"
 
+export interface MessageQuery{
+
+    ack?:MessageAck,
+    author?:string
+    body?:string,
+    broadcast?:boolean,
+    isStatus?:boolean,
+    from?:string,
+    to?: string
+    fromMe?:boolean,
+    hasMedia?:boolean,
+    id?:string,
+    vCards?:string[]
+    timestamp?: number
+    type?: MessageTypes
+    orderId?: string
+    title?: string
+    description?: string
+
+}
+
 export interface MessageFactory{
 
     ack:MessageAck,
-
     author?:string,
     body:string,
     broadcast:boolean,

@@ -4,14 +4,27 @@
   "description": "",
   "main": "Main.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rm -rf dist -and npx tsc --project tsconfig.json",
+    "buildps": "(mkdir dist || rd /q /s dist)  && npx tsc --project tsconfig.json",
+    "start": "node dist/Main.js",
+    "runps": "npm run buildps && npm run start"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@inquirer/prompts": "^3.3.0",
+    "@types/keypress": "^2.0.30",
+    "@types/node": "^20.10.2",
+    "@uploadcare/upload-client": "^6.10.0",
     "async-mutex": "^0.4.0",
+    "axios": "^1.6.2",
     "dotenv": "^16.3.1",
     "exceljs": "^4.3.0",
+    "form-data": "^4.0.0",
+    "fs-extra": "^11.2.0",
+    "inquirer": "^8.2.6",
+    "nanospinner": "^1.1.0",
     "puppeteer": "^19.4.0",
     "qrcode-terminal": "^0.12.0",
     "rxjs": "^7.8.1",
@@ -19,6 +32,8 @@
     "whatsapp-web.js": "^1.23.0"
   },
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/inquirer": "^9.0.7",
     "@types/uuid": "^9.0.6",
     "ts-loader": "^9.5.0",
     "ts-node": "^10.9.1",

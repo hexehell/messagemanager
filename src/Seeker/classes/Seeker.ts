@@ -1,10 +1,11 @@
-import { Observable, catchError, combineLatest, concatMap, from, map, merge, mergeMap, of, scan, tap, timeout, toArray, count, lastValueFrom, last } from "rxjs"
-import { ChatFactory, SearchOptions } from "../transformers/Factories/interfaces/Chat.factory"
-import { Client } from "../transformers/Factories/interfaces/Client"
-import { MessageFactory, MessageMedia } from "../transformers/Factories/interfaces/Message.factory"
+import { Observable, catchError, combineLatest, concatMap, from, map, merge, mergeMap, of, scan, tap, timeout, toArray, count, lastValueFrom, last, Subject, race, filter, concat } from "rxjs"
+import { ChatFactory, SearchOptions } from "../../transformers/Factories/interfaces/Chat.factory"
+import { ClientFactory } from "../../transformers/Factories/interfaces/Client"
+import { MessageFactory, MessageMedia, MessageQuery } from "../../transformers/Factories/interfaces/Message.factory"
 import { Media } from "exceljs"
-import { MediaManager } from "./MediaManager"
-import { DBMessage } from "../interfaces/db/DBMessage"
+import { MediaManager } from "../../MediaManager/classes/MediaManager"
+import { DBMessage } from "../../interfaces/DBMessage"
+import { Uploaders } from "../../ImagesUploaders/classes/Uploaders"
 
 export class Params {
 
@@ -12,12 +13,21 @@ export class Params {
     downloadTries: number = 3
 }
 
+
 export interface MessageOptions {
     getMedia?: boolean,
-    uploadToServer?:boolean
+    uploadToServer?: boolean
     timeout?: number,
+    Query?: MessageQuery
 }
 
+
+export interface Results {
+    messages: SaveMessage[],
+    okMessages: SaveMessage[],
+    issueMessages: SaveMessage[],
+    shouldHaveMedia: string[]
+}
 
 
 
@@ -54,20 +64,77 @@ export class SeekerRX {
 
     }
 
-
-    getMessagesToSave$ = (message: MessageFactory, { getMedia, timeout }: MessageOptions): Observable<SaveMessage> => {
+    QueryMessage$ = (message: MessageFactory, { Query }: MessageOptions): Observable<MessageFactory | undefined> => {
 
         const message$ = of(message)
 
+        const QuerySelection$ = message$.pipe(concatMap((message: MessageFactory) => {
+
+
+
+            const messageEntries = Object.entries(message)
+            const queryEntries = Object.entries(Query ?? {})
+
+            const results = queryEntries.map(([key, value]) => {
+                const entry = messageEntries.find(entry => entry[0] === key)
+
+                return entry![1] === value
+            })
+
+            if (results.some(x => x)) return of(message)
+
+            return of(undefined)
+
+        }))
+
+
+        return QuerySelection$
+
+    }
+
+    shouldHaveMedia$ = (saveMessage: SaveMessage): Observable<string | undefined> => {
+
+        const saveMessage$ = of(saveMessage)
+
+        const shouldHavetheMediaObject$ = saveMessage$.pipe(concatMap(({ id, manager, hasMedia }: SaveMessage) => !!!manager && hasMedia ? of(id) : of(undefined)))
+
+        const shouldHavetheMediaLink$ = saveMessage$.pipe(concatMap(({ id, manager, hasMedia }: SaveMessage) => !!manager && hasMedia && !!!manager.lilnk ? of(id) : of(undefined)))
+
+        const mediaId$ = concat(shouldHavetheMediaLink$,shouldHavetheMediaObject$)
+
+        return mediaId$
+    }
+
+
+    getMessagesToSave$ = (message: MessageFactory, { getMedia, timeout, uploadToServer, Query }: MessageOptions): Observable<SaveMessage> => {
+
+
+
+
+        const message$ = of(message)
+
+
+
+
+
+
         const chat$ = message$.pipe(concatMap((message: MessageFactory) => message.getChat()))
 
-        const chatName$ = chat$.pipe(concatMap((chat: ChatFactory) => of(chat.name)))
-
-        const media$ = message$.pipe(concatMap((message: MessageFactory) => message.hasMedia ? this.getMediaFromMessage$(message, getMedia, timeout) : of(undefined)))
 
         const saveMessage$ = message$.pipe(concatMap(({ timestamp, id, ack, getChat, from: fromMessage, to, fromMe, hasMedia, author, body }: MessageFactory) => of({ timestamp, ack, id, from: fromMessage, to, author, fromGroup: !!author, fromMe, body, hasMedia } as SaveMessage)))
 
+
+
+        const media$ = message$.pipe(concatMap((message: MessageFactory) => message.hasMedia ? this.getMediaFromMessage$(message, getMedia, timeout, uploadToServer) : of(undefined)))
+
+
+
+        const chatName$ = chat$.pipe(concatMap((chat: ChatFactory) => of(chat.name)))
+
+
         const combine$ = combineLatest({ save: saveMessage$, manager: media$, name: chatName$ })
+
+
 
         const returnMessage$ = combine$.pipe(concatMap(({ save, manager, name }: { save: SaveMessage, manager: MediaManager | undefined, name: string }) => {
             save.manager = manager
@@ -112,7 +179,7 @@ export class SeekerRX {
 
     }
 
-    getAllChats$(client: Client = this.seeker.client): Observable<ChatFactory[]> {
+    getAllChats$(client: ClientFactory = this.seeker.client): Observable<ChatFactory[]> {
         return from(client.getChats())
 
     }
@@ -142,7 +209,23 @@ export class SeekerRX {
     }
 
 
+    ResultMessages$ = (messages: SaveMessage[], shouldHaveMedia: string[]): Observable<Results> => {
 
+        const messages$ = from(messages)
+
+        const issueMessage$ = messages$.pipe(
+            concatMap((saveMessage: SaveMessage) => of([saveMessage, saveMessage.id])),
+            concatMap(([message, id]: (string | SaveMessage)[]) => !!shouldHaveMedia.find(idS => id === idS) ? of(message as SaveMessage) : of()), toArray())
+
+        const okMessages$ = messages$.pipe(
+            concatMap((saveMessage: SaveMessage) => of([saveMessage, saveMessage.id])),
+            concatMap(([message, id]: (string | SaveMessage)[]) => !!!shouldHaveMedia.find(idS => id === idS) ? of(message as SaveMessage) : of()), toArray())
+
+        const returnResult$ = combineLatest({ messages: of(messages), okMessages: okMessages$, issueMessages: issueMessage$, shouldHaveMedia: of(shouldHaveMedia) }).pipe(concatMap(val => of(val as Results)))
+
+        return returnResult$
+
+    }
 
 
     getAllMessagesToSave$(chats: ChatFactory[], options: MessageOptions): Observable<SaveMessage[]> {
@@ -151,9 +234,12 @@ export class SeekerRX {
 
         const eachChat$ = ChatsWithMessages$.pipe(concatMap(chat => chat))
 
-        const eachMessage$ = eachChat$.pipe(concatMap(chat => chat.messages ? chat.messages : []))
+        const eachMessage$ = eachChat$.pipe(concatMap(chat => chat.messages ? chat.messages : [] as MessageFactory[]))
 
-        const eachSaveMessage$ = eachMessage$.pipe(concatMap(message => this.getMessagesToSave$(message, options)))
+        const eachQueryMessage$ = eachMessage$.pipe(concatMap(message => this.QueryMessage$(message, options))).pipe(filter((value: MessageFactory | undefined) => typeof (value) !== 'undefined'), map(val => val as MessageFactory))
+
+        const eachSaveMessage$ = eachQueryMessage$.pipe(concatMap(message => this.getMessagesToSave$(message, options)))
+
 
         //  eachSaveMessage$.subscribe({next:(value)=>value.hasMedia?console.log({from:value.from,to:value.to  ,hasMedia:value.hasMedia,downloaded:value.manager?.downloaded}):undefined})
 
@@ -167,15 +253,10 @@ export class SeekerRX {
         const ChatsWithMessages$ = this.fetchMessagesfromChats$(chats)
         const eachChat$ = ChatsWithMessages$.pipe(concatMap(chat => chat))
         const eachMessage$ = eachChat$.pipe(concatMap(chat => chat.messages ? chat.messages : []))
-        const eachSaveMessage$ = eachMessage$.pipe(concatMap(message => this.getMessagesToSave$(message, options)))
 
-        //  eachSaveMessage$.subscribe({next:(value)=>value.hasMedia?console.log({from:value.from,to:value.to  ,hasMedia:value.hasMedia,downloaded:value.manager?.downloaded}):undefined})
+        const eachQueryMessage$ = eachMessage$.pipe(concatMap(message => this.QueryMessage$(message, options))).pipe(filter((value: MessageFactory | undefined) => typeof (value) !== 'undefined'), map(val => val as MessageFactory))
+        const eachSaveMessage$ = eachQueryMessage$.pipe(concatMap(message => this.getMessagesToSave$(message, options)))
 
-        // ChatsWithMessages$.subscribe(() => console.log("ChatsWithMessages$"))
-        // eachChat$.subscribe(() => console.log("eachChat$"))
-        // eachMessage$.subscribe(() => console.log("eachMessage$"))
-        // eachSaveMessage$.subscribe(() => console.log("eachSaveMessage$"))
-        // eachSaveMessage$.pipe(scan((acc: number, val) => acc + 1, 0), tap((current) => console.log(current))).subscribe()
 
 
         return eachSaveMessage$
@@ -193,12 +274,12 @@ export class SeekerRX {
     }
 
 
-    getMediaFromMessage$ = ((message: MessageFactory, getMedia: boolean = false, timeoutbreak: number = 3000): Observable<MediaManager | undefined> => {
+    getMediaFromMessage$ = ((message: MessageFactory, getMedia: boolean = false, timeoutbreak: number = 3000, uploadToServer: boolean = false): Observable<MediaManager | undefined> => {
 
         return of(message)
             .pipe(concatMap((message: MessageFactory) => {
 
-                const mediaManager = new MediaManager(message)
+                const mediaManager = new MediaManager(message, this.seeker.imageUploaders, uploadToServer)
 
                 if (!message.hasMedia)
                     return of(undefined)
@@ -269,42 +350,36 @@ export class SeekerActions {
     constructor(private seeker: Seeker) { }
 
 
-    supportedFormats = (mimetype: string) => {
-        switch (mimetype) {
-            case 'image/gif': return 'gif'
-            case 'image/jpeg': return 'jpeg'
-            case 'image/png': return 'png'
-
-        }
-
-        if (mimetype.startsWith('audio/ogg')) return 'oog'
-    }
-
-    async getAllSaveMessages(options?:MessageOptions):Promise<SaveMessage[]>{
 
 
-        const messageOptions = options??{getMedia:false,timeout:3000} as MessageOptions
+    async getAllSaveMessages(options?: MessageOptions): Promise<Results> {
+
+
+        const messageOptions = options ?? { getMedia: false, timeout: 3000, justMedia: false, uploadToServer: false } as MessageOptions
 
         const allChats$ = this.seeker.rx.getAllChats$();
 
 
         const contactChats$ = allChats$.pipe(concatMap((chats: ChatFactory[]) => this.seeker.rx.getAllContactChats$(chats)))
         const groupChats$ = allChats$.pipe(concatMap((chats: ChatFactory[]) => this.seeker.rx.getAllGroupChats$(chats)))
-
         const nonContactChat$ = allChats$.pipe(concatMap((chats: ChatFactory[]) => this.seeker.rx.getAllNonGroupNonContactChats$(chats)))
 
-        const groupSaveMessagesEach$ =groupChats$.pipe(concatMap((chats: ChatFactory[]) => this.seeker.rx.getEachMessagesToSave$(chats,messageOptions)))
+        const groupSaveMessagesEach$ = groupChats$.pipe(concatMap((chats: ChatFactory[]) => this.seeker.rx.getEachMessagesToSave$(chats, messageOptions)))
+        const contactSaveMessagesEach$ = contactChats$.pipe(concatMap((chats: ChatFactory[]) => this.seeker.rx.getEachMessagesToSave$(chats, messageOptions)))
+        const nonContactSaveMessagesEach$ = nonContactChat$.pipe(concatMap((chats: ChatFactory[]) => this.seeker.rx.getEachMessagesToSave$(chats, messageOptions)))
 
-        const contactSaveMessagesEach$ =contactChats$.pipe(concatMap((chats: ChatFactory[]) => this.seeker.rx.getEachMessagesToSave$(chats,messageOptions)))
+        const allSaveMessages$ = this.seeker.rx.mergeSaveMessages$$([], [groupSaveMessagesEach$, contactSaveMessagesEach$, nonContactSaveMessagesEach$]).pipe(last())
 
-        const nonContactSaveMessagesEach$ =nonContactChat$.pipe(concatMap((chats: ChatFactory[]) => this.seeker.rx.getEachMessagesToSave$(chats,messageOptions)))
-        
-        const allSaveMessages$ = this.seeker.rx.mergeSaveMessages$$([],[groupSaveMessagesEach$,contactSaveMessagesEach$,nonContactSaveMessagesEach$]).pipe(last())
+        const eachSaveMessage$ = merge(groupSaveMessagesEach$, contactSaveMessagesEach$, nonContactSaveMessagesEach$).pipe(concatMap((savemessage: SaveMessage) => this.seeker.rx.shouldHaveMedia$(savemessage)))
+        const shouldHaveMedia$ = eachSaveMessage$.pipe(concatMap((id: string | undefined) => of(id)), filter((value: string | undefined) => typeof (value) !== 'undefined'), map(val => val as string))
+        const ResultsBeforeSplit$ = combineLatest({ messages: allSaveMessages$, shouldHaveMedia: shouldHaveMedia$.pipe(toArray()) })
 
-        return await lastValueFrom(allSaveMessages$)
+        const Results$ = ResultsBeforeSplit$.pipe(concatMap(({ messages, shouldHaveMedia }: { messages: SaveMessage[], shouldHaveMedia: string[] }) => this.seeker.rx.ResultMessages$(messages, shouldHaveMedia)))
+
+        return await lastValueFrom(Results$.pipe(concatMap((val) => of(val as Results))))
 
     }
-    
+
 
 }
 
@@ -314,7 +389,8 @@ export class Seeker {
     actions: SeekerActions = new SeekerActions(this)
     rx: SeekerRX = new SeekerRX(this)
 
-    constructor(public client: Client) {
+
+    constructor(public client: ClientFactory, public imageUploaders: Uploaders) {
 
     }
 

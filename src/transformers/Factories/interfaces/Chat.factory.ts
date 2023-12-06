@@ -14,6 +14,6 @@ id:string
 messages:MessageFactory[]|undefined,
 
 fetchMessages(searchOptions:SearchOptions): Promise<MessageFactory[]>
-sendMessage()
+sendMessage():Promise<MessageFactory>
 
 }
