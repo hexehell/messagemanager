@@ -1,4 +1,4 @@
-export default class Semaphore {
+export  class Semaphore {
 
     currentRequests:any[]
     runningRequests: number = 0
