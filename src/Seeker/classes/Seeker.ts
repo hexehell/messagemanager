@@ -4,7 +4,7 @@ import { ClientFactory } from "../../transformers/Factories/interfaces/Client"
 import { MessageFactory, MessageMedia, MessageQuery } from "../../transformers/Factories/interfaces/Message.factory"
 import { Media } from "exceljs"
 import { MediaManager } from "../../MediaManager/classes/MediaManager"
-import { DBMessage } from "../../interfaces/DBMessage"
+import { Message } from "../../database/classes/Messages/interfaces/DBMessage"
 import { Uploaders } from "../../ImagesUploaders/classes/Uploaders"
 
 export class Params {
@@ -31,7 +31,7 @@ export interface Results {
 
 
 
-export interface SaveMessage extends DBMessage {
+export interface SaveMessage extends Message {
 
     manager: MediaManager | undefined
 }

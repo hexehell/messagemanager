@@ -1,4 +1,4 @@
 export interface CliAction{
-    action:string
+    action:string|unknown
     extraParams?:any
 }

@@ -4,8 +4,10 @@ import { createSpinner } from 'nanospinner'
 import { Observable, Subject, concatMap, from, of, repeat, retry } from 'rxjs';
 import { CliAction } from '../interfaces/CliAction';
 import { CLICommand, Command } from '../interfaces/Command.Factory';
-import { Messages } from '../Commands/Messages/Messages';
+import { Messages } from '../Commands/Messages/classes/Messages';
 import { CLIPhones } from '../Commands/Phones/classes/CLIPhones';
+import { AffiliatesMenu } from '../Commands/Affiliates/classes/AffiliatesMenu';
+import { CampaignCLI } from '../Commands/Campaigns/Campaigns';
 
 export class CLIProgram implements CLICommand {
 
@@ -18,25 +20,51 @@ export class CLIProgram implements CLICommand {
 
 
   static menuNext = new Subject<CliAction>()
+  static nextCommand: CLICommand
+  static nextOptions: CliAction|undefined
+  static currentPrompt: any
 
-  static showMenu = (options: QuestionCollection<any>) => {
-    inquirer.prompt(options).then((respuestas) => {
+  static showMenu = (options: QuestionCollection<any>,prompt?:boolean) => {
+    
+    if(!!!prompt) return     CLIProgram.menuNext.next({} as CliAction);
+
+    CLIProgram.currentPrompt = inquirer.prompt(options)
+    CLIProgram.currentPrompt.then((respuestas: any | any[]) => {
+
+      // Array.isArray(respuestas)
+      // console.log(respuestas)
+
       CLIProgram.menuNext.next(respuestas);
     });
   }
 
-   static nextCommand: CLICommand
 
-  static setNextCommand(command: CLICommand,options?:CliAction) {
 
-    if(options)command.previousOptions = options
+   static closeCurrentPrompt(){
+
+    !!CLIProgram.currentPrompt && CLIProgram.currentPrompt.ui.close(); 
+   }
+
+  static setNextCommand(command: CLICommand, options?: CliAction) {
+
+     command.passInOptions = options?? command.passInOptions
 
     CLIProgram.nextCommand = command
-    CLIProgram.showMenu(CLIProgram.nextCommand.ListOptions())
+    CLIProgram.nextOptions = options
+
+    let prompt:boolean = true
+
+    if(typeof command.prompt !== 'undefined') prompt = command.prompt
+
+    CLIProgram.showMenu(CLIProgram.nextCommand.ListOptions(CLIProgram.nextOptions),prompt)
 
   }
 
   static baseCommand: CLICommand
+
+  static backToBegining(){
+    CLIProgram.setNextCommand(CLIProgram.baseCommand)
+  }
 
 
   manageOptions = (options?: CliAction) => {
@@ -49,27 +77,37 @@ export class CLIProgram implements CLICommand {
 
         const phones = new CLIPhones(this)
 
-        CLIProgram.setNextCommand(phones)
+        return CLIProgram.setNextCommand(phones)
 
 
         break;
 
       case 'Afiliados':
-        // return of(console.log(action))
+
+        const affMenu = new AffiliatesMenu(this)
+
+        return CLIProgram.setNextCommand(affMenu)
+
         break;
 
       case 'Campañas':
 
-        // return of(console.log(action))
-        break;
 
-      case 'Mensajes':
-      
-      const messages = new Messages(this)
+      const campaignMenu = new CampaignCLI(this)
 
-      CLIProgram.setNextCommand(messages)
+      return CLIProgram.setNextCommand(campaignMenu)
       
+      
+      // return of(console.log(action))
       break;
+      
+      case 'Mensajes':
+        
+        const messages = new Messages(this)
+        
+        return CLIProgram.setNextCommand(messages)
+
+        break;
 
       case 'Salir':
         process.exit(0)
@@ -77,6 +115,8 @@ export class CLIProgram implements CLICommand {
 
 
     }
+
+    return CLIProgram.setNextCommand(this)
 
 
     // return of()

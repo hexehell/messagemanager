@@ -11,11 +11,13 @@ export interface Command{
 
 export interface CLICommand{
 
-    previousOptions?:CliAction
+    prompt?:boolean
+
+    passInOptions?:CliAction|undefined
 
     back:CLICommand|undefined
 
     manageOptions: (options: CliAction)=>void
 
-    ListOptions:()=>QuestionCollection<any> 
+    ListOptions:(options?: CliAction | undefined)=>QuestionCollection<any> 
 }

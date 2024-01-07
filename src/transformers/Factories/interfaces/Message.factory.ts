@@ -1,6 +1,8 @@
 import { ChatFactory } from "./Chat.factory"
 import { ContactFactory } from "./Contact.factory"
 
+export type MessageContent = string | MessageMedia
+
 export interface MessageQuery{
 
     ack?:MessageAck,

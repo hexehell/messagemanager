@@ -1,0 +1,1 @@
+export interface UnexpectedError{ err: Error, origin: string }

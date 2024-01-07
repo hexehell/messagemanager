@@ -6,6 +6,7 @@ import { PhoneTypes, PhonesInfo } from "../../../../transformers/PhonesInfo"
 import inquirer, { QuestionCollection } from "inquirer"
 import { catchError, concatMap, firstValueFrom, from, merge, of, take, timeout } from "rxjs"
 import { CLIProgram } from "@CampaignCreator/cli/classes/CLIProgram"
+import { WwjsCreator } from "@CampaignCreator/transformers/Wwjs/WwjsCreator"
 
 export class AddPhone implements CLICommand {
 
@@ -19,15 +20,15 @@ export class AddPhone implements CLICommand {
     switch (options.action) {
 
       case PhoneTypes.wwjs:
+    
+        const wwjsCreator = new  WwjsCreator()
 
+        await wwjsCreator.create().catch(err=>console.log(err))
 
-
-        await firstValueFrom( new PhoneCreator().createWwjsClient$())
-
-        CLIProgram.setNextCommand(this.back!)
+        return CLIProgram.setNextCommand(this.back!)
         break;
       case "atras":
-        CLIProgram.setNextCommand(this.back!)
+        return CLIProgram.setNextCommand(this.back!)
 
         break
 
@@ -40,27 +41,7 @@ export class AddPhone implements CLICommand {
     message: 'Selecciona un tipo de bot',
     choices: Array.prototype.concat(PhonesInfo.ListPhonesTypes(), ['atras']),
   })
-  flow$ = (prevOption?: CliAction | undefined) => {
-
-
-    switch (prevOption?.action) {
-
-      case PhoneTypes.wwjs:
-
-
-
-        return new PhoneCreator().createWwjsClient$()
-        break;
-
-    }
-
-
-
-
-    return of()
-
-
-  }
+  
 
 
 

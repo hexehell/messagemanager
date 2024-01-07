@@ -1,0 +1,21 @@
+export interface CampaingEnviromentConfiguration {
+
+    SHEETCONTACTS:string|undefined,
+    SHEETCONF:string|undefined,
+    SHEETIMAGES:string|undefined,
+    FROMFIELD:string|undefined,
+    TOFIELD:string|undefined,
+    MESSAGEFIELD:string|undefined,
+    IMAGEMESSAGEFIELD:string|undefined,
+    IMAGEFIELD:string|undefined,
+    IMAGENAME:string|undefined,
+    LATENCYFIELD:string|undefined,
+    UNITFIELD:string|undefined,
+    MODELATENCYFIELD:string|undefined,
+    STARTDATEFIELD:string|undefined,
+    STARTTIMEFIELD:string|undefined,
+    ENDDATEFIELD:string|undefined,
+    ENDTIMEFIELD:string|undefined,
+    CAMPAIGNNAME:string|undefined,
+    RAMPFIELD:string|undefined,
+}

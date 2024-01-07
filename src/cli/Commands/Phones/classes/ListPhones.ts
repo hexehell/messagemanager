@@ -3,9 +3,10 @@ import path from 'path'
 import { CLICommand, Command } from "@CampaignCreator/cli/interfaces/Command.Factory";
 import { Observable, from, of } from "rxjs";
 import { CliAction } from '@CampaignCreator/cli/interfaces/CliAction';
-import { ProgramCLI } from '@CampaignCreator/cli/classes/ProgramCLI';
 import { QuestionCollection } from 'inquirer';
 import { CLIProgram } from '@CampaignCreator/cli/classes/CLIProgram';
+import { PhonesInfo } from '@CampaignCreator/transformers/PhonesInfo';
+import { PhoneAvailabe } from '@CampaignCreator/transformers/PhoneCreator';
 
 export class ListPhones implements CLICommand {
 
@@ -18,16 +19,20 @@ export class ListPhones implements CLICommand {
 
     manageOptions = (options: CliAction) => {
 
+            PhonesInfo.getAvailablePhonesByType(options.action as string).map(({bot}:PhoneAvailabe)=>bot.phone).forEach(phone=>console.log(phone))
+
+
         CLIProgram.setNextCommand(this.back!)
         
     }
     
     ListOptions = ():QuestionCollection<any> => {
         
+        const options = Array.prototype.concat(PhonesInfo.ListPhonesTypes(), ['atras'])
         
         
         
-        this.printPhones()
+        // this.printPhones()
 
 
 
@@ -35,7 +40,7 @@ export class ListPhones implements CLICommand {
             type: 'list',
             name: 'action',
             message: 'Selecciona una opcion',
-            choices: ['atras'],
+            choices: options,
           };
 
 

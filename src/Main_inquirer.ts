@@ -1,5 +1,5 @@
 import { Client, LocalAuth } from "whatsapp-web.js";
-import { ClientWwjs } from './transformers/Wwjs'
+import { ClientWwjs } from './transformers/Wwjs/Wwjs'
 import { MessageOptions, SaveMessage, Seeker } from "./Seeker/classes/Seeker";
 import { concatMap, take, toArray, from, concat, tap, of, distinct, scan, combineLatest, last, map, firstValueFrom, Observable, delay, interval, timer, retry, repeat } from "rxjs";
 import { MessageFactory } from "./transformers/Factories/interfaces/Message.factory";
@@ -9,7 +9,6 @@ import { ImgBB } from "./ImagesUploaders/classes/ImgBB";
 import { UploadCare } from "./ImagesUploaders/classes/UploadCare";
 import { LocalStorage } from "./ImagesUploaders/classes/LocalStorage";
 import { OwnServerStorage } from "./ImagesUploaders/classes/OwnServerStorage";
-import { ProgramCLI } from "./cli/classes/ProgramCLI";
 import inquirer, { QuestionCollection } from 'inquirer';
 import { input } from "@inquirer/prompts";
 
@@ -55,7 +54,7 @@ const main = async()=>{
     const client = new Client({ authStrategy: new LocalAuth({ clientId: "client-one" }) });
 
     
-    const clientTransformed = new ClientWwjs(client)
+    const clientTransformed = new ClientWwjs(client,'')
 
     
     const imageUploaders = new Uploaders([

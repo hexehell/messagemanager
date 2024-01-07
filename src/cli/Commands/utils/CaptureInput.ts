@@ -2,9 +2,9 @@ import { Observable, concatMap, fromEvent, of } from "rxjs";
 
 export class CaptureInput {
 
-    constructor(public keySearch: string, public control: boolean) { }
+    constructor() { }
 
-    inputCaptured = ():Observable<any> => {
+    inputCaptured = (keySearch: string,control: boolean):Observable<any> => {
 
         let readline = require('readline');
 
@@ -18,10 +18,10 @@ export class CaptureInput {
             // console.log('got "keypress"', ch, key);
             const [a, { name, ctrl }] = emition as [string, { name: string, ctrl: boolean }]
 
-            if ((name === this.keySearch) && this.control && ctrl)
+            if ((name === keySearch) && control && ctrl)
                 return of({ name, ctrl })
 
-            return of()
+             return of()
         }))
 
     }
