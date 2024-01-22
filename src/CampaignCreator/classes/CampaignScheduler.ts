@@ -215,7 +215,10 @@ class Message {
 
 
         const overdue = () => {
-            return Math.abs(new Date(new Date().getTime() + 60000).getTime() - this.endDate.getTime()) / (1000 * 60) >= 1
+
+            const res = this.endDate.getTime() < new Date(new Date().getTime() + 1000).getTime()
+
+            return res
         }
 
 

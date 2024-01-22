@@ -1,13 +1,12 @@
 import inquirer, { QuestionCollection } from "inquirer";
 import { Observable, concatMap, from, fromEvent, of, repeat, retry, tap } from 'rxjs';
 // import { ProgramCLI } from "./cli/classes/ProgramCLI";
-import { CliAction } from "./cli/interfaces/CliAction";
-import { CaptureInput } from "./cli/Commands/utils/CaptureInput";
-import { CLIProgram } from "./cli/classes/CLIProgram";
-import AffiliateModel from "./database/Schemas/Affiliate/Affiliate.schema"
+import { CliAction } from "../cli/interfaces/CliAction";
+import { CLIProgram } from "../cli/classes/CLIProgram";
+import AffiliateModel from "../database/Schemas/Affiliate/Affiliate.schema"
 import mongoose from "mongoose";
-import { DialogNFD } from "./FileDialogs/classes/DialogNFD";
-import { DialogInquirer } from "./FileDialogs/classes/DialogInquirer";
+import { DialogNFD } from "../FileDialogs/classes/DialogNFD";
+import { DialogInquirer } from "../FileDialogs/classes/DialogInquirer";
 import * as Path from 'path'
 
 const main = async () => {

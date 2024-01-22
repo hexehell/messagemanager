@@ -32,10 +32,13 @@ export class ShowAffiliate implements CLICommand {
 
         CLIUtils.showVerticalTable(AffSelected)
 
+        
 
 
+         await CLIUtils.createEnterToContinue( 'presione enter para continuar...')
 
-        CLIProgram.setNextCommand(this.back!)
+
+        return  CLIProgram.setNextCommand(this.back!)
 
 
     };

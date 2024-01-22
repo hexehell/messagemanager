@@ -37,7 +37,7 @@ export class TurnOnPhone implements CLICommand {
 
         // const savedPhones = new ListSavedPhones(this.back!,this)
 
-        const savedPhones = await PhonesInfo.getBots((options.action as string))
+        const savedPhones = await PhonesInfo.getSavedBotsByType((options.action as string))
 
         const selectionPhones = Array.prototype.concat(savedPhones.map(bot => bot.phone), ['atras'])
 
@@ -68,7 +68,7 @@ export class TurnOnPhone implements CLICommand {
 
   ListOptions = (): QuestionCollection<any> => {
 
-    const options = Array.prototype.concat(PhonesInfo.ListPhonesTypes(), ['atras'])
+    const options = Array.prototype.concat('todos', PhonesInfo.listAvailablePhonesTypes(), 'atras')
 
     return {
       type: 'list',

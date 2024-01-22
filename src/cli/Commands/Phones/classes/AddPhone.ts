@@ -29,17 +29,18 @@ export class AddPhone implements CLICommand {
         break;
       case "atras":
         return CLIProgram.setNextCommand(this.back!)
-
+        
         break
-
-    }
-
+        
+      }
+      
+      return CLIProgram.setNextCommand(this.back!)
   }
   ListOptions = (options?: CliAction | undefined): QuestionCollection<any> => ({
     type: 'list',
     name: 'action',
     message: 'Selecciona un tipo de bot',
-    choices: Array.prototype.concat(PhonesInfo.ListPhonesTypes(), ['atras']),
+    choices: Array.prototype.concat(PhonesInfo.listAvailablePhonesTypes(), ['atras']),
   })
   
 

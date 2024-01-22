@@ -4,6 +4,8 @@ import { Bot } from '@CampaignCreator/database/classes/bot/interfaces/Bot'
 import { BotMongo } from '@CampaignCreator/database/classes/bot/classes/BotMongo'
 import { CLIUtils } from '@CampaignCreator/cli/utils/CliUtils'
 import { ClientFactory } from './Factories/interfaces/Client'
+import {conf} from '@CampaignCreator/conf/configuration'
+
 
 export enum PhoneTypes {
     wwjs = 'wwjs',
@@ -11,28 +13,30 @@ export enum PhoneTypes {
     meta = 'meta'
 }
 
+export const PhonesTypesSupported = [PhoneTypes.wwjs]
+
 export class PhonesInfo {
 
     static PhonesAvailables:Map<string, PhoneAvailabe> = new Map()
 
 
-    static ListPhonesTypes = () => {
+    static listAvailablePhonesTypes = () => {
 
-        return Array.from(Object.keys(PhoneTypes))
+        return Array.from(Object.keys(PhoneTypes).filter(type=>!!PhonesTypesSupported.find(x=>x===type)))
     }
 
     static getPhonesfrom(phoneType: string) {
 
-        return PhonesInfo.ListPhonesTypes()
+        return PhonesInfo.listAvailablePhonesTypes()
             .filter(type => phoneType.toLocaleLowerCase() === type.toLocaleLowerCase())
-            .map(type => `${process.env.PATHTOPHONES}/${type}`)
+            .map(type => `${conf().Paths.toPhones}/${type}`)
             .flat(1)
             .map(pathTo => fs.readdirSync(pathTo))
             .flat(1)
 
     }
 
-    static async getBots(phoneType: string): Promise<Bot[]> {
+    static async getSavedBotsByType(phoneType: string): Promise<Bot[]> {
 
         const botBD = new BotMongo()
 
@@ -43,6 +47,15 @@ export class PhonesInfo {
         return savedPhones.filter(bot => bot.botType === phoneType.toLocaleLowerCase())
 
 
+    }
+
+    static async getAllSavedBots():Promise<Bot[]>{
+     
+        const botBD = new BotMongo()
+
+        const savedPhones = (await botBD.listAllByPhoneId())
+
+        return savedPhones
     }
 
 
@@ -57,13 +70,13 @@ export class PhonesInfo {
 
     static getAvailablePhoneTypes = () => {
 
-        const listTypes: string[] = PhonesInfo.ListPhonesTypes()
+        const listTypes: string[] = PhonesInfo.listAvailablePhonesTypes()
 
 
-        return fs.readdirSync(process.env.PATHTOPHONES!)
-            .filter((file: string) => fs.statSync(`${process.env.PATHTOPHONES}/${file}`).isDirectory())
+        return fs.readdirSync(conf().Paths.toPhones)
+            .filter((file: string) => fs.statSync(`${conf().Paths.toPhones}/${file}`).isDirectory())
             .filter(dir => !!listTypes.find(type => type.toLocaleLowerCase() === dir.toLocaleLowerCase()))
-            .filter(type => fs.readdirSync(`${process.env.PATHTOPHONES!}/${type}`)
+            .filter(type => fs.readdirSync(`${conf().Paths.toPhones}/${type}`)
                 .filter(dir => PhonesInfo.evaluateTypePath(type, dir)).some(x => x)
             )
 
@@ -81,7 +94,11 @@ export class PhonesInfo {
                 : Array.from(PhonesInfo.PhonesAvailables.values()).map(({client}:PhoneAvailabe) =>client)
     }
 
-    static getAllAvailablePhonesForChoosing():string[]{
+    // static listAllAvailablePhones():Bot[]{
+
+    // }
+
+    static listAllAvailablePhonesForChoosing():string[]{
 
         return Array.from(PhonesInfo.PhonesAvailables.keys())
     }

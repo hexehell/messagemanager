@@ -6,6 +6,7 @@ import { BotMongo } from "@CampaignCreator/database/classes/bot/classes/BotMongo
 import { PhoneCreator } from "@CampaignCreator/transformers/PhoneCreator";
 import { PhonesInfo } from "@CampaignCreator/transformers/PhonesInfo";
 import { QuestionCollection } from "inquirer";
+import  { conf} from '@CampaignCreator/conf/configuration'
 
 export class ListSavedPhones implements CLICommand {
     prompt?: boolean | undefined = false;
@@ -22,7 +23,7 @@ export class ListSavedPhones implements CLICommand {
     manageOptions = async (options: CliAction) => {
 
 
-        const savedPhones = await PhonesInfo.getBots((options.action as string))
+        const savedPhones = await PhonesInfo.getSavedBotsByType((options.action as string))
 
         const selectionPhones = Array.prototype.concat(savedPhones.map(bot=>bot.phone), ['atras'])
 
@@ -39,6 +40,8 @@ export class ListSavedPhones implements CLICommand {
 
     ListOptions = () => {
 
+
+       !!!conf().behaviour.historyVerbose && console.clear()
 
         const optionsList: QuestionCollection<any> = {
         };

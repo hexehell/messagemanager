@@ -13,46 +13,167 @@ var __commonJS = (cb, mod) => function __require2() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
 
+// src/cli/utils/CliUtils.ts
+import Table from "cli-table";
+import { v4 as uuid } from "uuid";
+var CLIUtils;
+var init_CliUtils = __esm({
+  "src/cli/utils/CliUtils.ts"() {
+    "use strict";
+    CLIUtils = class _CLIUtils {
+      static async createEnterToContinue(message) {
+        await _CLIUtils.createInput({ name: "enter", message });
+      }
+      static async createInput({ name, message, initial }) {
+        const { Input } = __require("enquirer");
+        const prompt = new Input({
+          message,
+          initial
+        });
+        return await prompt.run().then((answer) => {
+          return { answer, field: name };
+        }).catch(console.log);
+      }
+      static async YesNoDialog({ name, message }) {
+        const { Confirm } = __require("enquirer");
+        const prompt = new Confirm({
+          name: "question",
+          message
+        });
+        return await prompt.run().then((answer) => {
+          return { answer, field: name };
+        }).catch(console.error);
+      }
+      static async createForm(message, choices) {
+        const { Form } = __require("enquirer");
+        const prompt = new Form({
+          name: "something",
+          message,
+          choices
+        });
+        return await prompt.run().then((value) => value).catch(console.error);
+      }
+      static async createDateTimePicker({ name, message }) {
+        const inquirer2 = __require("inquirer");
+        inquirer2.registerPrompt("datetime", __require("inquirer-datepicker-prompt"));
+        var questions = [
+          {
+            type: "datetime",
+            name: "dt",
+            message: message + " (dd/MM/yyyy)",
+            format: ["dd", "/", "MM", "/", "yyyy"]
+          }
+        ];
+        return await inquirer2.prompt(questions).then((answer) => {
+          return { answer: answer.dt, field: name };
+        });
+      }
+      static async createAutoComplete({ name, autocomplete, message, fieldToShow }) {
+        const arrWithID = autocomplete.map((row) => {
+          return { show: fieldToShow ? row[fieldToShow] : row, id: uuid() };
+        });
+        const arrShow = autocomplete.map((row) => fieldToShow ? row[fieldToShow] : row);
+        const { AutoComplete } = __require("enquirer");
+        const prompt = new AutoComplete({
+          name: "autocomplete",
+          message,
+          limit: 10,
+          initial: 0,
+          choices: Array.from(arrShow.filter((x, i, a) => a.indexOf(x) == i))
+        });
+        const ans = await prompt.run().then((answer) => answer).catch((error) => console.log(error));
+        return { answer: ans, field: name };
+      }
+      static showVerticalTable(something) {
+        if (Array.isArray(something))
+          return console.table(something);
+        else
+          return console.table(Object.entries(something));
+      }
+      static showHorizontalTable(something, colsWidth) {
+        const values = something.map((entry) => Object.values(entry)).map((entry) => entry.map((val) => val));
+        const headers = something.map((entry) => Object.keys(entry))[0];
+        console.log(_CLIUtils.createHorizontalTable(headers, values, colsWidth).toString());
+      }
+      static createHorizontalTable(headers, body, colsWidth) {
+        let tbl;
+        if (!!!colsWidth)
+          tbl = new Table({ style: { "padding-right": 10 }, head: headers });
+        else
+          tbl = new Table({ style: { "padding-right": 10 }, head: headers, colWidths: colsWidth });
+        body.forEach((arr) => {
+          tbl.push(arr);
+        });
+        return tbl;
+      }
+      static createVerticalTable(something) {
+        const affTbl = new Table({ style: { "padding-right": 10 } });
+        Object.entries(something).map((entry) => {
+          let row = {};
+          if (typeof entry[1] === typeof Date) {
+            entry[1] = new Date(entry[1].getDate());
+          }
+          if (Array.isArray(entry[1])) {
+            entry[1] = entry[1].join(" ");
+          }
+          row[entry[0]] = entry[1];
+          affTbl.push(row);
+          return 0;
+        });
+        return affTbl;
+      }
+    };
+  }
+});
+
 // src/cli/Commands/Messages/classes/SendSimpleMessage.ts
-import inquirer from "inquirer";
 var SendSimpleMessage;
 var init_SendSimpleMessage = __esm({
   "src/cli/Commands/Messages/classes/SendSimpleMessage.ts"() {
     "use strict";
     init_CLIProgram();
+    init_CliUtils();
     SendSimpleMessage = class {
       constructor(back) {
         this.manageOptions = async (options) => {
-          var _a, _b, _c;
+          var _a, _b;
           const messageCreation = (_b = (_a = this.passInOptions) == null ? void 0 : _a.extraParams) != null ? _b : {};
           const action = options == null ? void 0 : options.action;
           switch (action) {
             case "Preparar Mensaje":
               console.clear();
-              await inquirer.prompt({ message: "titulo del Mensaje", name: "titulo", type: "input" }).then((answer) => {
-                messageCreation.titulo = answer.titulo;
+              await CLIUtils.createInput({ name: "titulo", message: "titulo del Mensaje" }).then((answer) => {
+                messageCreation.titulo = answer.answer;
               });
-              await inquirer.prompt({ message: "texto del Mensaje", name: "message", type: "input" }).then((answer) => {
-                messageCreation.mensaje = answer.message;
+              await CLIUtils.createInput({ name: "texto", message: "texto del Mensaje" }).then((answer) => {
+                messageCreation.mensaje = answer.answer;
               });
+              console.table(messageCreation);
+              await CLIUtils.createEnterToContinue("presiona enter para continuar....");
               options.extraParams = messageCreation;
-              CLIProgram.setNextCommand(this, options);
+              return CLIProgram.setNextCommand(this, options);
               break;
             case "Agregar Afiliados u otros telefonos a enviar":
+              return CLIProgram.setNextCommand(this);
               break;
             case "Seleccionar telefonos Bots":
+              return CLIProgram.setNextCommand(this);
               break;
             case "Vista previa antes de Enviar":
               console.clear();
-              console.log({ ...(_c = this.passInOptions) == null ? void 0 : _c.extraParams });
-              CLIProgram.setNextCommand(this, options);
+              console.table(messageCreation);
+              await CLIUtils.createEnterToContinue("presiona enter para continuar....");
+              return CLIProgram.setNextCommand(this, options);
+              break;
+            case "atras":
+              return CLIProgram.setNextCommand(this.back);
               break;
           }
         };
         this.ListOptions = (options) => ({
           type: "list",
           name: "action",
-          message: "Selecciona una opcion",
+          message: "",
           choices: [
             "Preparar Mensaje",
             "Agregar Afiliados u otros telefonos a enviar",
@@ -107,13 +228,67 @@ var init_Message = __esm({
   }
 });
 
+// src/database/utils/Semaphore.ts
+var Semaphore;
+var init_Semaphore = __esm({
+  "src/database/utils/Semaphore.ts"() {
+    "use strict";
+    Semaphore = class {
+      /**
+       * Creates a semaphore that limits the number of concurrent Promises being handled
+       * @param {*} maxConcurrentRequests max number of concurrent promises being handled at any time
+       */
+      constructor(maxConcurrentRequests = 1) {
+        this.runningRequests = 0;
+        this.maxConcurrentRequests = 1;
+        this.currentRequests = [];
+        this.runningRequests = 0;
+        this.maxConcurrentRequests = maxConcurrentRequests;
+      }
+      /**
+       * Returns a Promise that will eventually return the result of the function passed in
+       * Use this to limit the number of concurrent function executions
+       * @param {*} fnToCall function that has a cap on the number of concurrent executions
+       * @param  {...any} args any arguments to be passed to fnToCall
+       * @returns Promise that will resolve with the resolved value as if the function passed in was directly called
+       */
+      callFunction(fnToCall, ...args) {
+        return new Promise((resolve, reject) => {
+          this.currentRequests.push({
+            resolve,
+            reject,
+            fnToCall,
+            args
+          });
+          this.tryNext();
+        });
+      }
+      tryNext() {
+        if (!this.currentRequests.length) {
+          return;
+        } else if (this.runningRequests < this.maxConcurrentRequests) {
+          let { resolve, reject, fnToCall, args } = this.currentRequests.shift();
+          this.runningRequests++;
+          let req = fnToCall(...args);
+          req.then((res) => resolve(res)).catch((err) => reject(err)).finally(() => {
+            this.runningRequests--;
+            this.tryNext();
+          });
+        }
+      }
+    };
+  }
+});
+
 // src/database/classes/Messages/classes/MessageMongo.ts
-var MessageMongo;
+var semaphore, MessageMongo;
 var init_MessageMongo = __esm({
   "src/database/classes/Messages/classes/MessageMongo.ts"() {
     "use strict";
     init_Message_schema();
     init_Message();
+    init_Semaphore();
+    semaphore = new Semaphore(3);
     MessageMongo = class extends AbstractMessageData {
       getAffByID(id) {
         throw new Error("Method not implemented.");
@@ -122,7 +297,9 @@ var init_MessageMongo = __esm({
         throw new Error("Method not implemented.");
       }
       async create(message) {
-        return !!await Message_schema_default.create(message);
+        return !!await semaphore.callFunction(async () => {
+          return !!await Message_schema_default.create(message);
+        });
       }
       findFirst(name) {
         throw new Error("Method not implemented.");
@@ -217,113 +394,6 @@ var init_MessageSender = __esm({
   }
 });
 
-// src/cli/utils/CliUtils.ts
-import Table from "cli-table";
-import { v4 as uuid } from "uuid";
-var CLIUtils;
-var init_CliUtils = __esm({
-  "src/cli/utils/CliUtils.ts"() {
-    "use strict";
-    CLIUtils = class _CLIUtils {
-      static async createInput({ name, message, initial }) {
-        const { Input } = __require("enquirer");
-        const prompt = new Input({
-          message,
-          initial
-        });
-        return await prompt.run().then((answer) => {
-          return { answer, field: name };
-        }).catch(console.log);
-      }
-      static async YesNoDialog({ name, message }) {
-        const { Confirm } = __require("enquirer");
-        const prompt = new Confirm({
-          name: "question",
-          message
-        });
-        return await prompt.run().then((answer) => {
-          return { answer, field: name };
-        }).catch(console.error);
-      }
-      static async createForm(message, choices) {
-        const { Form } = __require("enquirer");
-        const prompt = new Form({
-          name: "something",
-          message,
-          choices
-        });
-        return await prompt.run().then((value) => value).catch(console.error);
-      }
-      static async createDateTimePicker({ name, message }) {
-        const inquirer3 = __require("inquirer");
-        inquirer3.registerPrompt("datetime", __require("inquirer-datepicker-prompt"));
-        var questions = [
-          {
-            type: "datetime",
-            name: "dt",
-            message: message + " (dd/MM/yyyy)",
-            format: ["dd", "/", "MM", "/", "yyyy"]
-          }
-        ];
-        return await inquirer3.prompt(questions).then((answer) => {
-          return { answer: answer.dt, field: name };
-        });
-      }
-      static async createAutoComplete({ name, autocomplete, message, fieldToShow }) {
-        const arrWithID = autocomplete.map((row) => {
-          return { show: fieldToShow ? row[fieldToShow] : row, id: uuid() };
-        });
-        const arrShow = autocomplete.map((row) => fieldToShow ? row[fieldToShow] : row);
-        const { AutoComplete } = __require("enquirer");
-        const prompt = new AutoComplete({
-          name: "autocomplete",
-          message,
-          limit: 10,
-          initial: 0,
-          choices: Array.from(arrShow.filter((x, i, a) => a.indexOf(x) == i))
-        });
-        const ans = await prompt.run().then((answer) => answer).catch((error) => console.log(error));
-        return { answer: ans, field: name };
-      }
-      static showVerticalTable(something) {
-        console.log(_CLIUtils.createVerticalTable(something).toString());
-      }
-      static showHorizontalTable(something, colsWidth) {
-        const values = something.map((entry) => Object.values(entry)).map((entry) => entry.map((val) => val));
-        const headers = something.map((entry) => Object.keys(entry))[0];
-        console.log(_CLIUtils.createHorizontalTable(headers, values, colsWidth).toString());
-      }
-      static createHorizontalTable(headers, body, colsWidth) {
-        let tbl;
-        if (!!!colsWidth)
-          tbl = new Table({ style: { "padding-right": 10 }, head: headers });
-        else
-          tbl = new Table({ style: { "padding-right": 10 }, head: headers, colWidths: colsWidth });
-        body.forEach((arr) => {
-          tbl.push(arr);
-        });
-        return tbl;
-      }
-      static createVerticalTable(something) {
-        const affTbl = new Table({ style: { "padding-right": 10 } });
-        Object.entries(something).map((entry) => {
-          let row = {};
-          if (typeof entry[1] === typeof Date) {
-            entry[1] = new Date(entry[1].getDate());
-          }
-          if (Array.isArray(entry[1])) {
-            entry[1] = entry[1].join(" ");
-          }
-          row[entry[0]] = entry[1];
-          affTbl.push(row);
-          return 0;
-        });
-        return affTbl;
-      }
-    };
-  }
-});
-
 // src/database/Schemas/Bot/Bot.Schema.ts
 import mongoose2 from "mongoose";
 var botSchema, BotModel, Bot_Schema_default;
@@ -400,27 +470,71 @@ var init_BotMongo = __esm({
   }
 });
 
+// src/conf/configuration.ts
+import dotenv from "dotenv";
+var confObj, init_dotenv, castBoolProp, conf;
+var init_configuration = __esm({
+  "src/conf/configuration.ts"() {
+    "use strict";
+    confObj = void 0;
+    init_dotenv = async () => {
+      return dotenv.config();
+    };
+    castBoolProp = (prop) => {
+      return !!prop && ((prop == null ? void 0 : prop.toLocaleLowerCase()) === "true" || parseInt(prop != null ? prop : "") === 1);
+    };
+    conf = () => {
+      var _a, _b;
+      if (!!!confObj) {
+        init_dotenv();
+        confObj = {
+          Paths: {
+            toPhones: (_a = process.env.PATHTOPHONES) != null ? _a : ""
+          },
+          Mongo: {
+            connectionString: (_b = process.env.MONGOCONNECTIONSTRING) != null ? _b : ""
+          },
+          Testing: {
+            sending: castBoolProp(process.env.SENDING)
+          },
+          behaviour: {
+            historyVerbose: castBoolProp(process.env.HISTORYVERBOSE)
+          }
+        };
+      }
+      return confObj;
+    };
+  }
+});
+
 // src/transformers/PhonesInfo.ts
 import * as fs from "fs-extra";
-var PhoneTypes, _PhonesInfo, PhonesInfo;
+var PhoneTypes, PhonesTypesSupported, _PhonesInfo, PhonesInfo;
 var init_PhonesInfo = __esm({
   "src/transformers/PhonesInfo.ts"() {
     "use strict";
     init_BotMongo();
+    init_configuration();
     PhoneTypes = /* @__PURE__ */ ((PhoneTypes3) => {
       PhoneTypes3["wwjs"] = "wwjs";
       PhoneTypes3["venom"] = "venom";
       PhoneTypes3["meta"] = "meta";
       return PhoneTypes3;
     })(PhoneTypes || {});
+    PhonesTypesSupported = ["wwjs" /* wwjs */];
     _PhonesInfo = class _PhonesInfo {
       static getPhonesfrom(phoneType) {
-        return _PhonesInfo.ListPhonesTypes().filter((type) => phoneType.toLocaleLowerCase() === type.toLocaleLowerCase()).map((type) => `${process.env.PATHTOPHONES}/${type}`).flat(1).map((pathTo) => fs.readdirSync(pathTo)).flat(1);
+        return _PhonesInfo.listAvailablePhonesTypes().filter((type) => phoneType.toLocaleLowerCase() === type.toLocaleLowerCase()).map((type) => `${conf().Paths.toPhones}/${type}`).flat(1).map((pathTo) => fs.readdirSync(pathTo)).flat(1);
       }
-      static async getBots(phoneType) {
+      static async getSavedBotsByType(phoneType) {
         const botBD = new BotMongo();
         const savedPhones = await botBD.listAllByPhoneId();
         return savedPhones.filter((bot) => bot.botType === phoneType.toLocaleLowerCase());
+      }
+      static async getAllSavedBots() {
+        const botBD = new BotMongo();
+        const savedPhones = await botBD.listAllByPhoneId();
+        return savedPhones;
       }
       static evaluateTypePath(type, path2) {
         switch (type.toLocaleLowerCase()) {
@@ -432,7 +546,9 @@ var init_PhonesInfo = __esm({
       static selectAvailablePhonesClients(phones) {
         return phones.length !== 0 ? Array.from(_PhonesInfo.PhonesAvailables.values()).map(({ bot, client }) => ({ phone: bot.phone, client })).filter(({ phone }) => !!phones.find((selected) => phone === selected)).map((phone) => phone.client) : Array.from(_PhonesInfo.PhonesAvailables.values()).map(({ client }) => client);
       }
-      static getAllAvailablePhonesForChoosing() {
+      // static listAllAvailablePhones():Bot[]{
+      // }
+      static listAllAvailablePhonesForChoosing() {
         return Array.from(_PhonesInfo.PhonesAvailables.keys());
       }
       static getClientByPhone(phone) {
@@ -447,13 +563,13 @@ var init_PhonesInfo = __esm({
       }
     };
     _PhonesInfo.PhonesAvailables = /* @__PURE__ */ new Map();
-    _PhonesInfo.ListPhonesTypes = () => {
-      return Array.from(Object.keys(PhoneTypes));
+    _PhonesInfo.listAvailablePhonesTypes = () => {
+      return Array.from(Object.keys(PhoneTypes).filter((type) => !!PhonesTypesSupported.find((x) => x === type)));
     };
     _PhonesInfo.getAvailablePhoneTypes = () => {
-      const listTypes = _PhonesInfo.ListPhonesTypes();
-      return fs.readdirSync(process.env.PATHTOPHONES).filter((file) => fs.statSync(`${process.env.PATHTOPHONES}/${file}`).isDirectory()).filter((dir) => !!listTypes.find((type) => type.toLocaleLowerCase() === dir.toLocaleLowerCase())).filter(
-        (type) => fs.readdirSync(`${process.env.PATHTOPHONES}/${type}`).filter((dir) => _PhonesInfo.evaluateTypePath(type, dir)).some((x) => x)
+      const listTypes = _PhonesInfo.listAvailablePhonesTypes();
+      return fs.readdirSync(conf().Paths.toPhones).filter((file) => fs.statSync(`${conf().Paths.toPhones}/${file}`).isDirectory()).filter((dir) => !!listTypes.find((type) => type.toLocaleLowerCase() === dir.toLocaleLowerCase())).filter(
+        (type) => fs.readdirSync(`${conf().Paths.toPhones}/${type}`).filter((dir) => _PhonesInfo.evaluateTypePath(type, dir)).some((x) => x)
       );
     };
     PhonesInfo = _PhonesInfo;
@@ -493,8 +609,8 @@ var init_TestMessage = __esm({
         this.ListOptions = (options) => ({
           type: "list",
           name: "action",
-          message: "Selecciona una opcion",
-          choices: Array.prototype.concat(PhonesInfo.getAllAvailablePhonesForChoosing(), ["atras"])
+          message: "",
+          choices: Array.prototype.concat(PhonesInfo.listAllAvailablePhonesForChoosing(), ["atras"])
         });
         this.back = back;
       }
@@ -531,7 +647,7 @@ var init_Messages = __esm({
         this.ListOptions = (options) => ({
           type: "list",
           name: "action",
-          message: "Selecciona una opcion",
+          message: "",
           choices: [
             "Enviar Mensaje simple",
             "Enviar Mensaje de Prueba",
@@ -553,18 +669,31 @@ var init_ListPhones = __esm({
     "use strict";
     init_CLIProgram();
     init_PhonesInfo();
+    init_CliUtils();
     ListPhones = class {
       constructor(back) {
-        this.manageOptions = (options) => {
-          PhonesInfo.getAvailablePhonesByType(options.action).map(({ bot }) => bot.phone).forEach((phone) => console.log(phone));
-          CLIProgram.setNextCommand(this.back);
+        this.manageOptions = async (options) => {
+          switch (options.action) {
+            case "cargados":
+              return CLIProgram.setNextCommand(this.back);
+              break;
+            case "salvados":
+              const phones = await PhonesInfo.getAllSavedBots();
+              CLIUtils.showHorizontalTable(phones);
+              return CLIProgram.setNextCommand(this.back);
+              break;
+            case "atras":
+              return CLIProgram.setNextCommand(this.back);
+              break;
+          }
+          return CLIProgram.setNextCommand(this.back);
         };
         this.ListOptions = () => {
-          const options = Array.prototype.concat(PhonesInfo.ListPhonesTypes(), ["atras"]);
+          const options = Array.prototype.concat("cargados", "salvados", "atras");
           return {
             type: "list",
             name: "action",
-            message: "Selecciona una opcion",
+            message: "",
             choices: options
           };
         };
@@ -683,12 +812,12 @@ var init_Wwjs = __esm({
       }
       async sendMessageImage(chatId, image, caption) {
         let mediaPath = uuid2();
-        const [dataInfo, base64] = image.data.split(",");
-        const mimetype = dataInfo.replace("data:", "").replace(";base64", "");
-        mediaPath = path.join("./media", mediaPath + "." + mimetype.replace("image/", ""));
+        const base64 = image.data;
+        const mimetype = image.mimetype.replace("data:", "").replace(";base64", "").replace("image/", "");
+        mediaPath = path.join("./media", mediaPath + "." + mimetype);
         fs3.writeFileSync(mediaPath, Buffer.from(base64, "base64"));
         const content = MessageWwjs.fromFilePath(mediaPath);
-        const messageSent = await this.wwjsClient.sendMessage(chatId, content, { caption });
+        const messageSent = await this.wwjsClient.sendMessage(chatId + "@c.us", content, { caption });
         try {
           fs3.unlinkSync(mediaPath);
         } catch (err) {
@@ -700,9 +829,27 @@ var init_Wwjs = __esm({
         this.wwjsClient.initialize();
         this.emit("init" /* init */, this);
       }
+      async parseMessage(something) {
+        const chatWwjs = await something.getChat();
+        const chat = new ChatWwjs(chatWwjs);
+        return new MessageWwjs(something, chat);
+      }
       wwjsParsedEvents() {
         this.wwjsClient.on("qr" /* qr */, (qr) => this.emit("qr" /* qr */, qr));
         this.wwjsClient.on("ready" /* ready */, () => this.emit("ready" /* ready */, this));
+        this.wwjsClient.on("change_state" /* change_state */, (something) => this.emit("change_state" /* change_state */, something));
+        this.wwjsClient.on("message" /* message */, async (message) => {
+          this.emit("message" /* message */, this.parseMessage(message));
+        });
+        this.wwjsClient.on("media_uploaded", async (message) => {
+          this.emit("message" /* message */, this.parseMessage(message));
+        });
+        this.wwjsClient.on("message_ack", async (message, ack) => {
+          this.emit("message" /* message */, this.parseMessage(message));
+        });
+        this.wwjsClient.on("message_edit", async (message) => {
+          this.emit("message" /* message */, this.parseMessage(message));
+        });
       }
       async getChats() {
         return (await this.wwjsClient.getChats()).map((chat) => {
@@ -794,7 +941,7 @@ import {
   firstValueFrom
 } from "rxjs";
 import { v4 as uuid3 } from "uuid";
-import { Client, LocalAuth } from "whatsapp-web.js";
+import { Client, LocalAuth, WAState } from "whatsapp-web.js";
 import { createSpinner as createSpinner2 } from "nanospinner";
 var WwjsCreator;
 var init_WwjsCreator = __esm({
@@ -805,10 +952,21 @@ var init_WwjsCreator = __esm({
     init_Wwjs();
     init_BotMongo();
     init_PhonesInfo();
+    init_configuration();
     WwjsCreator = class extends PhoneCreator {
       constructor() {
         super();
         this.BotBD = new BotMongo();
+        this.state = async (something) => {
+          console.info(`state: ${something}`);
+          if (!![
+            WAState.PROXYBLOCK,
+            WAState.SMB_TOS_BLOCK,
+            WAState.TOS_BLOCK
+          ].find((evt) => evt === something)) {
+            console.error(something);
+          }
+        };
         this.reconnect = async ({ id, phone }) => {
           const savedPath = ``;
           this.clientId = id;
@@ -828,6 +986,8 @@ var init_WwjsCreator = __esm({
           this.ready$ = fromEvent(clientTransformed, "ready" /* ready */);
           this.reloaded$ = fromEvent(clientTransformed, "reloaded" /* reloaded */);
           this.saveError$ = fromEvent(clientTransformed, "loadError" /* loadError */);
+          this.state$ = fromEvent(clientTransformed, "change_state" /* change_state */);
+          this.state$.subscribe((something) => this.state(something));
           this.init$.subscribe((client2) => this.initReload(client2));
           this.ready$.subscribe((client2) => this.reloading(client2));
           clientTransformed.initialize();
@@ -848,20 +1008,21 @@ var init_WwjsCreator = __esm({
           this.ready$ = fromEvent(clientTransformed, "ready" /* ready */);
           this.saved$ = fromEvent(clientTransformed, "saved" /* saved */);
           this.saveError$ = fromEvent(clientTransformed, "loadError" /* loadError */);
+          this.message$ = fromEvent(clientTransformed, "message" /* message */);
           const savedAndClosed$ = this.saved$.pipe(concatMap((client2) => {
             var _a;
             return of2(client2 ? (_a = this.spiner) == null ? void 0 : _a.success({ text: "telefono agregado" }) : "");
           }), concatMap(() => of2("")));
-          const return$ = race(savedAndClosed$, this.saveError$);
+          const return$ = race(savedAndClosed$, this.saveError$).pipe(first()).pipe(timeout(timeoutInSeconds * 1e3), catchError((err) => {
+            clientTransformed.disconnect().catch();
+            return of2("");
+          }));
           const subsqr = qr$.subscribe((qr) => this.qr(qr));
           this.ready$.subscribe((client2) => this.ready(client2));
           this.init$.subscribe((client2) => this.init(client2));
           this.saved$.subscribe((client2) => this.saved(client2));
           clientTransformed.initialize();
-          return firstValueFrom(return$.pipe(first()).pipe(timeout(timeoutInSeconds * 1e3), catchError((err) => {
-            clientTransformed.disconnect().catch();
-            return of2("");
-          })));
+          return firstValueFrom(return$);
         };
         this.qr = (qr) => {
           var _a;
@@ -892,8 +1053,11 @@ var init_WwjsCreator = __esm({
         this.cancelQR = () => {
         };
       }
+      message(message) {
+        throw new Error("Method not implemented.");
+      }
       save(client) {
-        const pathToSave = process.env.PATHTOPHONES + `wwjs/session-${client.getPhone()}`;
+        const pathToSave = conf().Paths.toPhones + `wwjs/session-${client.getPhone()}`;
         try {
         } catch (err) {
           client == null ? void 0 : client.clientSavingError(typeof err === "string" ? err : err.message);
@@ -926,7 +1090,7 @@ var init_TurnOnPhone = __esm({
           const action = options == null ? void 0 : options.action;
           switch (action.toLocaleLowerCase()) {
             case "wwjs":
-              const savedPhones = await PhonesInfo.getBots(options.action);
+              const savedPhones = await PhonesInfo.getSavedBotsByType(options.action);
               const selectionPhones = Array.prototype.concat(savedPhones.map((bot) => bot.phone), ["atras"]);
               const phoneKeySelected = (await CLIUtils.createAutoComplete({ name: "available", message: "elige un telefono disponible", autocomplete: selectionPhones })).answer.toString();
               if (phoneKeySelected === "atras")
@@ -942,7 +1106,7 @@ var init_TurnOnPhone = __esm({
           }
         };
         this.ListOptions = () => {
-          const options = Array.prototype.concat(PhonesInfo.ListPhonesTypes(), ["atras"]);
+          const options = Array.prototype.concat("todos", PhonesInfo.listAvailablePhonesTypes(), "atras");
           return {
             type: "list",
             name: "action",
@@ -977,12 +1141,13 @@ var init_AddPhone = __esm({
               return CLIProgram.setNextCommand(this.back);
               break;
           }
+          return CLIProgram.setNextCommand(this.back);
         };
         this.ListOptions = (options) => ({
           type: "list",
           name: "action",
           message: "Selecciona un tipo de bot",
-          choices: Array.prototype.concat(PhonesInfo.ListPhonesTypes(), ["atras"])
+          choices: Array.prototype.concat(PhonesInfo.listAvailablePhonesTypes(), ["atras"])
         });
         this.back = back;
       }
@@ -1031,7 +1196,7 @@ var init_CLIPhones = __esm({
           const optionsList = {
             type: "list",
             name: "action",
-            message: "Selecciona una opcion",
+            message: "",
             choices: [
               "Listar telefonos",
               "Agregar telefono",
@@ -1353,6 +1518,36 @@ var init_AfiliateMongo = __esm({
   }
 });
 
+// src/cli/Commands/Affiliates/classes/ShowAffiliate.ts
+var Table2, ShowAffiliate;
+var init_ShowAffiliate = __esm({
+  "src/cli/Commands/Affiliates/classes/ShowAffiliate.ts"() {
+    "use strict";
+    init_CLIProgram();
+    init_AfiliateMongo();
+    init_CliUtils();
+    Table2 = __require("cli-table");
+    ShowAffiliate = class {
+      constructor(command) {
+        this.prompt = false;
+        this.manageOptions = async (options) => {
+          var _a;
+          const dbAffiliate = new AffiliateMongo();
+          const AffSelected = await dbAffiliate.getAffByID((_a = this.passInOptions) == null ? void 0 : _a.extraParams.id);
+          CLIUtils.showVerticalTable(AffSelected);
+          await CLIUtils.createEnterToContinue("presione enter para continuar...");
+          return CLIProgram.setNextCommand(this.back);
+        };
+        this.ListOptions = () => {
+          const optionsList = {};
+          return optionsList;
+        };
+        this.back = command;
+      }
+    };
+  }
+});
+
 // src/cli/Commands/Affiliates/classes/Search.ts
 import { createSpinner as createSpinner3 } from "nanospinner";
 var SearchAffiliate;
@@ -1362,6 +1557,7 @@ var init_Search = __esm({
     init_AfiliateMongo();
     init_CLIProgram();
     init_CliUtils();
+    init_ShowAffiliate();
     SearchAffiliate = class {
       constructor(back, selectedCommand) {
         this.selectedCommand = selectedCommand;
@@ -1387,7 +1583,7 @@ var init_Search = __esm({
           spinner.stop();
           const displaySelected = (await CLIUtils.createAutoComplete({ name: "name", autocomplete: displayAff, message: "Selecciona el nombre" })).answer.toString();
           let selected = listAff.filter((x) => x.name === displaySelected)[0];
-          if (displayAff.filter((x) => x.toLocaleLowerCase() === displaySelected.toLocaleLowerCase()).length) {
+          if (displayAff.filter((x) => x.toLocaleLowerCase() === displaySelected.toLocaleLowerCase()).length > 1) {
             console.log("existen multiples opciones para este nombre. Especifique");
             selected = await this.promptList(listAff.filter((x) => x.name === displaySelected));
           }
@@ -1400,12 +1596,18 @@ var init_Search = __esm({
           const displayAff = listAff.map((x) => x.phone);
           spinner.stop();
           const displaySelected = (await CLIUtils.createAutoComplete({ name: "phone", autocomplete: displayAff, message: "Selecciona el telefono" })).answer.toString();
-          let selected = listAff.filter((x) => x.name === displaySelected)[0];
-          if (displayAff.filter((x) => x.toLocaleLowerCase() === displaySelected.toLocaleLowerCase()).length) {
+          let selected = listAff.filter((x) => x.phone === displaySelected)[0];
+          if (displayAff.filter((x) => x.toLocaleLowerCase() === displaySelected.toLocaleLowerCase()).length > 1) {
             console.log("existen multiples opciones para este telefono. Especifique");
             selected = await this.promptList(listAff.filter((x) => x.phone === displaySelected));
           }
-          return CLIProgram.setNextCommand(this.selectedCommand, { extraParams: selected });
+          if (!!selected) {
+            const showAff = new ShowAffiliate(this);
+            showAff.passInOptions = { action: "show", extraParams: selected };
+            showAff.prompt = false;
+            return CLIProgram.setNextCommand(showAff);
+          }
+          return CLIProgram.setNextCommand(this.back);
         };
         this.ListOptions = () => {
           const optionsList = [{
@@ -1434,35 +1636,6 @@ var init_Search = __esm({
         });
         let selected = await prompt.run().then((answer) => answer.split("-")[0].trim()).catch(console.error);
         return arr.filter((x) => x.id === selected)[0];
-      }
-    };
-  }
-});
-
-// src/cli/Commands/Affiliates/classes/ShowAffiliate.ts
-var Table2, ShowAffiliate;
-var init_ShowAffiliate = __esm({
-  "src/cli/Commands/Affiliates/classes/ShowAffiliate.ts"() {
-    "use strict";
-    init_CLIProgram();
-    init_AfiliateMongo();
-    init_CliUtils();
-    Table2 = __require("cli-table");
-    ShowAffiliate = class {
-      constructor(command) {
-        this.prompt = false;
-        this.manageOptions = async (options) => {
-          var _a;
-          const dbAffiliate = new AffiliateMongo();
-          const AffSelected = await dbAffiliate.getAffByID((_a = this.passInOptions) == null ? void 0 : _a.extraParams.id);
-          CLIUtils.showVerticalTable(AffSelected);
-          CLIProgram.setNextCommand(this.back);
-        };
-        this.ListOptions = () => {
-          const optionsList = {};
-          return optionsList;
-        };
-        this.back = command;
       }
     };
   }
@@ -1629,6 +1802,7 @@ var init_CreateAffiliate = __esm({
     init_SponsorMongo();
     init_SuburbMongo();
     init_CLIFormBuilder();
+    init_configuration();
     Table3 = __require("cli-table");
     CreateAffiliate = class {
       constructor(command) {
@@ -1667,6 +1841,7 @@ var init_CreateAffiliate = __esm({
           CLIProgram.setNextCommand(this.back);
         };
         this.ListOptions = () => {
+          !!!conf().behaviour.historyVerbose && console.clear();
           const optionsList = {};
           return optionsList;
         };
@@ -1720,7 +1895,7 @@ var init_AffiliatesMenu = __esm({
           const optionsList = {
             type: "list",
             name: "action",
-            message: "Selecciona una opcion",
+            message: "",
             choices: [
               "Listar",
               "Buscar",
@@ -1789,9 +1964,27 @@ var init_DialogNFD = __esm({
 });
 
 // src/database/classes/Campaigns/enum/ScheduleState.ts
+var ScheduleState, MessageStatus;
 var init_ScheduleState = __esm({
   "src/database/classes/Campaigns/enum/ScheduleState.ts"() {
     "use strict";
+    ScheduleState = /* @__PURE__ */ ((ScheduleState2) => {
+      ScheduleState2["CREATED"] = "created";
+      ScheduleState2["STARTPROCESS"] = "startProcess";
+      ScheduleState2["OVERDUE"] = "overdue";
+      ScheduleState2["INPROGRESS"] = "inprogress";
+      ScheduleState2["COMPLETED"] = "completed";
+      ScheduleState2["COMPLETEDOVERDUE"] = "completedOverdue";
+      ScheduleState2["DEACTIVATED"] = "deactivated";
+      return ScheduleState2;
+    })(ScheduleState || {});
+    MessageStatus = /* @__PURE__ */ ((MessageStatus2) => {
+      MessageStatus2["CREATED"] = "created";
+      MessageStatus2["INPROGRESS"] = "inprogress";
+      MessageStatus2["COMPLETED"] = "completed";
+      MessageStatus2["ERROR"] = "error";
+      return MessageStatus2;
+    })(MessageStatus || {});
   }
 });
 
@@ -2084,9 +2277,23 @@ var init_Table = __esm({
 });
 
 // src/database/classes/Campaigns/interfaces/Configuration.ts
+var TimeUnit, SendMode;
 var init_Configuration = __esm({
   "src/database/classes/Campaigns/interfaces/Configuration.ts"() {
     "use strict";
+    TimeUnit = /* @__PURE__ */ ((TimeUnit2) => {
+      TimeUnit2["second"] = "second";
+      TimeUnit2["minute"] = "minute";
+      TimeUnit2["hour"] = "hour";
+      TimeUnit2["day"] = "day";
+      return TimeUnit2;
+    })(TimeUnit || {});
+    SendMode = /* @__PURE__ */ ((SendMode2) => {
+      SendMode2["random"] = "random";
+      SendMode2["consecutive"] = "consecutive";
+      SendMode2["nowait"] = "nowait";
+      return SendMode2;
+    })(SendMode || {});
   }
 });
 
@@ -2118,7 +2325,8 @@ var init_CampaignCreator = __esm({
         STARTTIMEFIELD: "STARTTIME",
         ENDDATEFIELD: "ENDDATE",
         ENDTIMEFIELD: "ENDTIME",
-        CAMPAIGNNAME: "CAMPAIGNNAME"
+        CAMPAIGNNAME: "CAMPAIGNNAME",
+        RAMPFIELD: "RAMPFIELD"
       }) {
         this.campaignConfiguration = campaignConfiguration;
       }
@@ -2128,18 +2336,22 @@ var init_CampaignCreator = __esm({
         const tblContacts = await this.getTableJustText(workbook.getWorksheet(this.campaignConfiguration.SHEETCONTACTS));
         const tblImages = await this.getTableWithImages(workbook.getWorksheet(this.campaignConfiguration.SHEETIMAGES));
         const tblConf = await this.getTableJustText(workbook.getWorksheet(this.campaignConfiguration.SHEETCONF));
-        const contacts = !!tblContacts ? await this.createContacts(tblContacts) : void 0;
+        let contacts = !!tblContacts ? await this.createContacts(tblContacts) : void 0;
         const images = !!tblImages ? await this.createImages(tblImages) : void 0;
-        const conf = !!tblConf ? (await this.createConfiguration(tblConf))[0] : void 0;
+        const conf2 = !!tblConf ? (await this.createConfiguration(tblConf))[0] : void 0;
         if ((contacts == null ? void 0 : contacts.length) > 100)
-          conf.executionRamp = 40;
+          conf2.executionRamp = 40;
+        contacts = this.avoidContactRepetition(contacts);
         return {
-          configuration: conf,
+          configuration: conf2,
           contacts,
           createDate: /* @__PURE__ */ new Date(),
           images,
           state: "created" /* CREATED */
         };
+      }
+      avoidContactRepetition(contacts) {
+        return contacts.filter((x, i, a) => a.indexOf(x) == i);
       }
       validateContacts(contacts) {
         return !!!contacts.find(({ from: from5, to, message }) => !(!!from5 && !!to && !!message));
@@ -2149,7 +2361,7 @@ var init_CampaignCreator = __esm({
       }
       async createConfiguration(confTable) {
         return Array.from(confTable.rows.values()).map((row) => {
-          var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
+          var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
           let [latencyInstruction, unit, mode, startDate, startTime, endDate, endTime, campaignName, executionRamp] = [
             (_b = (_a = row.getCellByString(this.campaignConfiguration.LATENCYFIELD)) == null ? void 0 : _a.value) != null ? _b : "",
             (_d = (_c = row.getCellByString(this.campaignConfiguration.UNITFIELD)) == null ? void 0 : _c.value) != null ? _d : "",
@@ -2159,7 +2371,7 @@ var init_CampaignCreator = __esm({
             (_l = (_k = row.getCellByString(this.campaignConfiguration.ENDDATEFIELD)) == null ? void 0 : _k.value) != null ? _l : "",
             (_n = (_m = row.getCellByString(this.campaignConfiguration.ENDTIMEFIELD)) == null ? void 0 : _m.value) != null ? _n : "",
             (_p = (_o = row.getCellByString(this.campaignConfiguration.CAMPAIGNNAME)) == null ? void 0 : _o.value) != null ? _p : "",
-            (_r = (_q = row.getCellByString(this.campaignConfiguration.RAMPFIELD)) == null ? void 0 : _q.value) != null ? _r : ""
+            (_r = (_q = row.getCellByString(this.campaignConfiguration.RAMPFIELD)) == null ? void 0 : _q.value) != null ? _r : "15"
           ];
           const configuration = {
             behaviour: {
@@ -2170,10 +2382,16 @@ var init_CampaignCreator = __esm({
             startDate: this.getDateFromString(startDate, startTime),
             endDate: this.getDateFromString(endDate, endTime),
             campaignName,
-            executionRamp: (_s = parseInt(executionRamp)) != null ? _s : 5
+            executionRamp: parseInt(executionRamp)
           };
           return configuration;
         });
+      }
+      processMessage(message, messageMap) {
+        messageMap.forEach((messageMap2) => {
+          message = message.replace(`[${messageMap2.key}]`, messageMap2.value);
+        });
+        return message;
       }
       async createContacts(contactTable) {
         return Array.from(contactTable.rows.values()).map((row) => {
@@ -2197,6 +2415,7 @@ var init_CampaignCreator = __esm({
               value: cell.value
             };
           });
+          contact.message = this.processMessage(contact.message, contact.messageMap);
           return contact;
         });
       }
@@ -2328,37 +2547,8 @@ var init_CampaignCreator = __esm({
       }
       async getTableJustText(Sheet) {
         const table = Table4.fromScratch();
-        let rows = Sheet.getRows(1, Sheet.rowCount);
-        for (let row of rows) {
-          let cellValues = row.model ? row.model.cells.map((cell) => {
-            var _a;
-            return (_a = cell.value) == null ? void 0 : _a.toString();
-          }) : void 0;
-          if (cellValues.length < 1)
-            continue;
-          if (!table.HeadersBeenSet) {
-            table.addHeaderRow(cellValues);
-            continue;
-          }
-          if (!table.addRow(
-            cellValues
-          )) {
-            cellValues = [];
-            const insertCells = [];
-            row.eachCell({ includeEmpty: true }, (cell, index) => {
-              insertCells.push(
-                new Promise((resolve) => {
-                  cellValues.push(cell.value ? cell.value.toString() : void 0);
-                  resolve(1);
-                })
-              );
-            });
-            await Promise.all(insertCells);
-          } else
-            continue;
-          if (!table.addRow(cellValues))
-            continue;
-        }
+        await this.addHeaders(table, Sheet);
+        await this.addTextCells(table, Sheet);
         return table.rows.size > 0 ? table : void 0;
       }
     };
@@ -2367,9 +2557,9 @@ var init_CampaignCreator = __esm({
 
 // src/CampaignCreator/classes/CampaignScheduler.ts
 import { EventEmitter as EventEmitter2 } from "events";
-import { Observable as Observable3, Subject as Subject2, catchError as catchError2, delay, from as from3, fromEvent as fromEvent2, interval, map, merge, repeat, scan, switchMap, takeUntil, tap, timer } from "rxjs";
+import { Observable as Observable3, Subject as Subject2, catchError as catchError2, delay, firstValueFrom as firstValueFrom2, from as from3, fromEvent as fromEvent2, interval, map, merge, repeat, scan, switchMap, takeUntil, tap, timer } from "rxjs";
 import { v4 as uuid5 } from "uuid";
-import { Semaphore } from "async-mutex";
+import { Semaphore as Semaphore2 } from "async-mutex";
 var SchedulerEventsEmitter, SchedulerParams, Message2, SchedulerActions, CampaignScheduler;
 var init_CampaignScheduler = __esm({
   "src/CampaignCreator/classes/CampaignScheduler.ts"() {
@@ -2380,46 +2570,63 @@ var init_CampaignScheduler = __esm({
         this.scheduler = scheduler;
       }
       start() {
+        var _a;
         this.scheduler.emit("started" /* started */);
+        (_a = this.scheduler.callbacks) == null ? void 0 : _a.start(this.scheduler);
       }
-      prepare() {
+      prepare(resume) {
+        var _a;
         this.scheduler.emit("prepare" /* prepare */);
+        (_a = this.scheduler.callbacks) == null ? void 0 : _a.prepare(resume);
       }
       ready() {
+        var _a;
         this.scheduler.emit("ready" /* ready */);
+        (_a = this.scheduler.callbacks) == null ? void 0 : _a.ready();
       }
       pause() {
         this.scheduler.emit("paused" /* paused */);
       }
       dispatch() {
+        var _a;
         this.scheduler.emit("dispatch" /* dispatch */);
+        (_a = this.scheduler.callbacks) == null ? void 0 : _a.dispatch();
       }
       message(message) {
         this.scheduler.emit("message" /* message */, message);
       }
       messageEnd(message) {
+        var _a;
         this.scheduler.emit("messageEnd" /* messageEnd */, message);
+        (_a = this.scheduler.callbacks) == null ? void 0 : _a.sendMessageEnd(message.properties.contact);
       }
       messageError(message) {
+        var _a;
         this.scheduler.emit("messageError" /* messageError */, message);
+        (_a = this.scheduler.callbacks) == null ? void 0 : _a.sendMessageError(message.error, message.properties.contact);
       }
       finish() {
+        var _a;
         this.scheduler.emit("finished" /* finished */);
+        (_a = this.scheduler.callbacks) == null ? void 0 : _a.finish();
       }
       overdue() {
+        var _a;
         this.scheduler.emit("overdue" /* overdue */);
+        (_a = this.scheduler.callbacks) == null ? void 0 : _a.overdue();
       }
     };
     SchedulerParams = class {
       constructor() {
+        this.ResumeSchedule = [];
         this.messagesScheduled = [];
         this.messagesDispatched = /* @__PURE__ */ new Map();
         this.messagesEnded = [];
         this.messagesError = [];
-        this.messagesEndedSempahore = new Semaphore(1);
-        this.messagesScheduledSempahore = new Semaphore(1);
-        this.messagesDispatchedSempahore = new Semaphore(1);
-        this.messagesErrorSempahore = new Semaphore(1);
+        this.messagesEndedSempahore = new Semaphore2(1);
+        this.messagesScheduledSempahore = new Semaphore2(1);
+        this.messagesDispatchedSempahore = new Semaphore2(1);
+        this.messagesErrorSempahore = new Semaphore2(1);
         this.stop = false;
         this.debug = false;
       }
@@ -2434,13 +2641,17 @@ var init_CampaignScheduler = __esm({
       get endDate() {
         return this.properties.scheduler.campaign.configuration.endDate;
       }
+      get startDate() {
+        return this.properties.startDate;
+      }
       setState(messageState) {
         this.state = messageState;
       }
       run() {
         this.setState("onWait" /* onWait */);
         const overdue = () => {
-          return Math.abs(new Date((/* @__PURE__ */ new Date()).getTime() + 6e4).getTime() - this.endDate.getTime()) / (1e3 * 60) >= 1;
+          const res = this.endDate.getTime() < new Date((/* @__PURE__ */ new Date()).getTime() + 1e3).getTime();
+          return res;
         };
         this.subscription = timer(this.properties.startDate).pipe(tap(() => overdue() ? this.properties.scheduler.events.overdue() : void 0)).pipe(
           tap(() => this.setState("running" /* running */)),
@@ -2455,6 +2666,7 @@ var init_CampaignScheduler = __esm({
             }
           ),
           catchError2((err, caught) => {
+            const error = err;
             this.setState("error" /* error */);
             return err;
           })
@@ -2527,7 +2739,13 @@ var init_CampaignScheduler = __esm({
             index
           });
         });
-        this.scheduler.events.prepare();
+        this.scheduler.params.ResumeSchedule = this.scheduler.params.messagesScheduled.map((record) => {
+          return {
+            contact: record.properties.contact,
+            scheduledDate: record.startDate
+          };
+        });
+        this.scheduler.events.prepare(this.scheduler.params.ResumeSchedule);
         if (this.scheduler.params.messagesScheduled.length >= 1) {
           this.scheduler.events.ready();
           return true;
@@ -2645,6 +2863,7 @@ var init_CampaignScheduler = __esm({
         this.actions = new SchedulerActions(this);
         this.events = new SchedulerEventsEmitter(this);
         this.params = new SchedulerParams();
+        this.callbacks = options == null ? void 0 : options.schedulerEventCallbacks;
         this.initEvents();
       }
       init() {
@@ -2765,9 +2984,176 @@ var init_CampaignScheduler = __esm({
       startProcess(schedulerEventCallbacks) {
         var _a, _b, _c;
         const eventCallBacks = (_c = (_b = (_a = this.options) == null ? void 0 : _a.schedulerEventCallbacks) != null ? _b : schedulerEventCallbacks) != null ? _c : void 0;
+        this.callbacks = eventCallBacks;
         if (eventCallBacks)
           return this.actions.prepare(eventCallBacks);
         throw "Scheduller should have a Manager";
+      }
+      async waitProcessToFinish() {
+        await firstValueFrom2(fromEvent2(this, "finished" /* finished */));
+      }
+    };
+  }
+});
+
+// src/database/Schemas/Campaign/Campaign.Schema.ts
+import mongoose7, { Schema as Schema3 } from "mongoose";
+var SendBehaviourSchema, ConfigurationSchema, ContactMessageSchema, ImageCampaignSchema, CampaignSchema, CampaignModel;
+var init_Campaign_Schema = __esm({
+  "src/database/Schemas/Campaign/Campaign.Schema.ts"() {
+    "use strict";
+    init_Configuration();
+    init_ScheduleState();
+    SendBehaviourSchema = new Schema3({
+      latency: [Number],
+      unit: { type: String, enum: Object.values(TimeUnit) },
+      mode: { type: String, enum: Object.values(SendMode) }
+    });
+    ConfigurationSchema = new Schema3({
+      behaviour: SendBehaviourSchema,
+      startDate: Date,
+      endDate: Date,
+      campaignName: String,
+      executionRamp: Number
+    });
+    ContactMessageSchema = new Schema3({
+      id: String,
+      from: String,
+      to: String,
+      message: String,
+      imagefield: String,
+      messageMap: [{ key: String, value: String }],
+      status: { type: String, enum: Object.values(MessageStatus) }
+    });
+    ImageCampaignSchema = new Schema3({
+      name: String,
+      image: String,
+      link: String,
+      ext: String
+    });
+    CampaignSchema = new Schema3({
+      createDate: Date,
+      configuration: ConfigurationSchema,
+      contacts: [ContactMessageSchema],
+      images: [ImageCampaignSchema],
+      state: { type: String, enum: Object.values(ScheduleState) }
+    });
+    CampaignModel = mongoose7.model("Campaign", CampaignSchema);
+  }
+});
+
+// src/database/classes/Campaigns/classes/CampaignMongo.ts
+var CampaignMongo;
+var init_CampaignMongo = __esm({
+  "src/database/classes/Campaigns/classes/CampaignMongo.ts"() {
+    "use strict";
+    init_Campaign_Schema();
+    init_ScheduleState();
+    init_ScheduleState();
+    CampaignMongo = class {
+      async activate({ id }, activate) {
+        return !!await CampaignModel.updateOne({ _id: id }, { state: !!activate ? "created" /* CREATED */ : "deactivated" /* DEACTIVATED */ });
+      }
+      async getById(id) {
+        return [await CampaignModel.findOne({ _id: id }).lean().exec()].map(({
+          _id,
+          createDate,
+          configuration,
+          contacts,
+          images,
+          state
+        }) => ({
+          id: _id.toHexString(),
+          createDate,
+          configuration,
+          contacts: contacts.map((contact) => ({ ...contact, id: _id.toHexString() })),
+          images,
+          state
+        }))[0];
+      }
+      async listAllActive() {
+        return (await CampaignModel.find({ "state": { "$ne": "deactivated" /* DEACTIVATED */ } })).map(({ _id, createDate, configuration, contacts, state }) => ({
+          id: _id.toHexString(),
+          state,
+          createDate,
+          name: configuration.campaignName,
+          contacts: contacts.length,
+          created: contacts.filter((contact) => contact.status === "created" /* CREATED */).length,
+          inProgress: contacts.filter((contact) => contact.status === "inprogress" /* INPROGRESS */).length,
+          error: contacts.filter((contact) => contact.status === "error" /* ERROR */).length,
+          completed: contacts.filter((contact) => contact.status === "completed" /* COMPLETED */).length
+        }));
+      }
+      async listAll() {
+        return (await CampaignModel.find({})).map(({ _id, createDate, configuration, contacts, state }) => ({
+          id: _id.toHexString(),
+          state,
+          createDate,
+          name: configuration.campaignName,
+          contacts: contacts.length,
+          created: contacts.filter((contact) => contact.status === "created" /* CREATED */).length,
+          inProgress: contacts.filter((contact) => contact.status === "inprogress" /* INPROGRESS */).length,
+          error: contacts.filter((contact) => contact.status === "error" /* ERROR */).length,
+          completed: contacts.filter((contact) => contact.status === "completed" /* COMPLETED */).length
+        }));
+      }
+      async create(campaign) {
+        return !!await CampaignModel.create(campaign);
+      }
+      async delete(campaign) {
+        return !!await CampaignModel.deleteOne({ _id: campaign.id });
+      }
+      async campaignInProgress({ id }) {
+        return !!await CampaignModel.updateOne({ _id: id }, { state: "inprogress" /* INPROGRESS */ });
+      }
+      async campaignCompleted({ id }) {
+        const campaign = await this.getById(id);
+        if (campaign.state === "overdue" /* OVERDUE */)
+          return !!await CampaignModel.updateOne({ _id: id }, { state: "completedOverdue" /* COMPLETEDOVERDUE */ });
+        else
+          return !!await CampaignModel.updateOne({ _id: id }, { state: "completed" /* COMPLETED */ });
+      }
+      async campaignStartProcess({ id }) {
+        return !!await CampaignModel.updateOne({ _id: id }, { state: "startProcess" /* STARTPROCESS */ });
+      }
+      async campaignOverdue({ id }) {
+        return !!await CampaignModel.updateOne({ _id: id }, { state: "overdue" /* OVERDUE */ });
+      }
+      // async campaignError({id}: Campaign): Promise<boolean> {
+      //     return !!(await CampaignModel.updateOne({_id:id},{state:ScheduleState.}))
+      // }
+      async messageInProgress({ id, contacts }, idMessage) {
+        const dbCampaign = await CampaignModel.findById(id);
+        if (!!!dbCampaign)
+          return false;
+        const contact = dbCampaign == null ? void 0 : dbCampaign.contacts.find((contact2) => contact2._id === idMessage);
+        if (!!!contact)
+          return false;
+        contact.status = "inprogress" /* INPROGRESS */;
+        return !!await (dbCampaign == null ? void 0 : dbCampaign.save());
+      }
+      async messageCompleted({ id }, idMessage) {
+        const dbCampaign = await CampaignModel.findById(id);
+        if (!!!dbCampaign)
+          return false;
+        return await !!dbCampaign.updateOne({
+          $set: { "contacts.$[x].status": "completed" /* COMPLETED */ }
+        }, {
+          arrayFilters: [{
+            "x._id": idMessage
+            // new mongoose.Types.ObjectId(idMessage) 
+          }]
+        });
+      }
+      async messageError({ id }, idMessage) {
+        const dbCampaign = await CampaignModel.findById(id);
+        if (!!!dbCampaign)
+          return false;
+        const contact = dbCampaign == null ? void 0 : dbCampaign.contacts.find((contact2) => contact2._id === idMessage);
+        if (!!!contact)
+          return false;
+        contact.status = "error" /* ERROR */;
+        return !!await (dbCampaign == null ? void 0 : dbCampaign.save());
       }
     };
   }
@@ -2784,21 +3170,72 @@ var init_CampaignManager = __esm({
     init_CampaignScheduler();
     init_MessageMongo();
     init_PhonesInfo();
+    init_CampaignMongo();
     SchedulerEventsManager = class {
       constructor(params) {
         this.params = params;
+        this.start = async (scheduler) => {
+          console.log("start");
+          await this.setCampaignStartProcess();
+        };
+        this.prepare = async (resume) => {
+          console.log("prepare");
+          console.table(resume.map((record) => `${record.contact.to} || ${record.scheduledDate.toDateString()} - ${record.scheduledDate.toTimeString()}  `));
+        };
+        this.ready = async () => {
+          console.log("ready");
+          await this.setCampaignInProgress();
+        };
+        this.pause = async () => {
+          console.log("pause");
+        };
+        this.dispatch = async () => {
+          console.log("dispatch");
+        };
+        this.finish = async () => {
+          console.log("finish");
+          await this.setCampaignCompleted();
+        };
+        this.overdue = async () => {
+          console.log("overdue");
+          await this.setCampaignOverdue();
+        };
         this.sendMessageAction = async (contactMessage) => {
+          await this.setMessageInProgress(contactMessage);
           const messageEventsController = new MessageController(contactMessage, this.params);
           await messageEventsController.sendMessage();
         };
         this.sendMessageError = async (err, contactMessage) => {
           const { from: from5, imagefield, message, messageMap, status, to } = contactMessage;
           console.log(`${from5} ${to} ${message} --- Error:${typeof err === "string" ? err : err.message}`);
+          await this.setMessageError(contactMessage);
         };
         this.sendMessageEnd = async (contactMessage) => {
           const { from: from5, imagefield, message, messageMap, status, to } = contactMessage;
           console.log(`${from5} ${to} ${message} --- Mensaje Enviado`);
+          await this.setMessageCompleted(contactMessage);
         };
+      }
+      async setCampaignStartProcess() {
+        await this.params.campaignData.campaignStartProcess(this.params.campaign);
+      }
+      async setCampaignOverdue() {
+        await this.params.campaignData.campaignOverdue(this.params.campaign);
+      }
+      async setCampaignInProgress() {
+        await this.params.campaignData.campaignInProgress(this.params.campaign);
+      }
+      async setCampaignCompleted() {
+        await this.params.campaignData.campaignCompleted(this.params.campaign);
+      }
+      async setMessageError({ _id }) {
+        return await this.params.campaignData.messageError(this.params.campaign, _id);
+      }
+      async setMessageInProgress({ _id }) {
+        return await this.params.campaignData.messageInProgress(this.params.campaign, _id);
+      }
+      async setMessageCompleted({ _id }) {
+        return await this.params.campaignData.messageCompleted(this.params.campaign, _id);
       }
     };
     MessageController = class {
@@ -2807,44 +3244,50 @@ var init_CampaignManager = __esm({
         this.params = params;
         this.message = "";
         this.message = contact.message;
-        this.prepareMessage();
+      }
+      selectClient(clients) {
+        return clients[Math.floor(Math.random() * clients.length)];
       }
       prepareMessage() {
-        this.contact.messageMap.reduce(({ key, value }) => {
-          this.message = this.message.replace(`[${key}]`, value);
-          return { key, value };
+        this.contact.messageMap.forEach((messageMap) => {
+          this.message = this.message.replace(`[${messageMap.key}]`, messageMap.value);
         });
       }
       getMessage() {
         return this.message;
       }
       getImage() {
-        const imageCampaign = this.params.campaign.images.filter((image) => image.name == this.contact.imagefield);
+        const imageCampaign = this.params.campaign.images.filter((image) => image.name == this.contact.imagefield.replace("{", "").replace("}", ""));
         return {
           data: !!imageCampaign ? imageCampaign[0].image : "",
           mimetype: this.getImageExt()
         };
       }
       getImageExt() {
-        const imageCampaign = this.params.campaign.images.filter((image) => image.name == this.contact.imagefield);
+        const imageCampaign = this.params.campaign.images.filter((image) => image.name == this.contact.imagefield.replace("{", "").replace("}", ""));
         return !!imageCampaign ? imageCampaign[0].ext : "";
       }
       async sendMessage() {
-        const { from: from5, imagefield, to } = this.contact;
-        if (!!this.params.client) {
-          !!imagefield ? this.sendImage() : this.sendText();
+        const { from: from5, imagefield, to, message } = this.contact;
+        let clientSelected;
+        if (["", "-", ".", ","].some((x) => x === from5.trim()) || from5.length == 0) {
+          clientSelected = this.selectClient(this.params.clients);
+        }
+        if (!!!clientSelected)
+          clientSelected = this.params.clients.find((x) => x.getPhone() === from5);
+        if (!!clientSelected) {
+          console.log(clientSelected.getPhone(), to, message);
+          return true;
         } else
           throw `Bot no encontrado ${from5} ${to} ${this.getMessage()}`;
       }
-      async sendImage() {
-        var _a;
+      async sendImage(client) {
         const { to } = this.contact;
-        return this.saveOnDb(await ((_a = this.params.client) == null ? void 0 : _a.sendMessage(to, this.getImage(), this.getMessage())));
+        return this.saveOnDb(await client.sendMessage(to, this.getImage(), this.getMessage()));
       }
-      async sendText() {
-        var _a;
+      async sendText(client) {
         const { to } = this.contact;
-        (_a = this.params.client) == null ? void 0 : _a.sendMessage(to, this.getMessage());
+        client.sendMessage(to, this.getMessage());
       }
       async saveOnDb(message) {
         const messageDB = [message].map(({
@@ -2874,22 +3317,27 @@ var init_CampaignManager = __esm({
       }
     };
     CampaignManager = class {
-      constructor() {
+      constructor(schedule) {
+        this.schedule = schedule;
       }
       async createCampaingFromFile(excelPath) {
         const creator = new CampaignCreator();
         const campaign = await creator.createCampaing(fs4.readFileSync(excelPath)).catch((err) => console.log(err));
-        if (!!!campaign)
-          return false;
-        const schedule = this.scheduleCampaing(campaign, PhonesInfo.selectAvailablePhonesClients([]));
-        return !!schedule && CampaignsInfo.loadCampaing(campaign) && CampaignsInfo.loadSchedule(schedule);
+        return !!campaign && CampaignsInfo.loadCampaing(campaign);
       }
-      selectClient(clients) {
-        return clients[Math.floor(Math.random() * clients.length)];
+      scheduleCampaign(campaign) {
+        const schedule = this.prepareCampaign(campaign, PhonesInfo.selectAvailablePhonesClients([]));
+        this.schedule = schedule;
+        return !!schedule;
       }
-      scheduleCampaing(campaign, clients) {
-        const schedulerManager = new SchedulerEventsManager({ campaign, messageData: new MessageMongo(), client: this.selectClient(clients) });
-        const scheduler = new CampaignScheduler(campaign, { runOnReady: false, schedulerEventCallbacks: schedulerManager });
+      async startProcess() {
+        var _a, _b;
+        (_a = this.schedule) == null ? void 0 : _a.startProcess();
+        await ((_b = this.schedule) == null ? void 0 : _b.waitProcessToFinish());
+      }
+      prepareCampaign(campaign, clients) {
+        const schedulerManager = new SchedulerEventsManager({ campaign, campaignData: new CampaignMongo(), messageData: new MessageMongo(), clients });
+        const scheduler = new CampaignScheduler(campaign, { runOnReady: true, schedulerEventCallbacks: schedulerManager });
         return scheduler;
       }
     };
@@ -2905,6 +3353,7 @@ var init_CampaingsInfo = __esm({
     init_ScheduleState();
     init_CampaignManager();
     init_utils();
+    init_CampaignMongo();
     _CampaignsInfo = class _CampaignsInfo {
       static get Manager() {
         if (!!!_CampaignsInfo._Manager)
@@ -2950,6 +3399,10 @@ var init_CampaingsInfo = __esm({
           Remitentes: recieverPhones
         });
       }
+      static async getSavedCampaign(id) {
+        const campaignMongo = new CampaignMongo();
+        return await campaignMongo.getById(id);
+      }
       static getLoadedCampaign(selection) {
         var _a;
         return (_a = Array.from(this.Campaings.entries()).find((entry) => {
@@ -2958,8 +3411,22 @@ var init_CampaingsInfo = __esm({
           return selection === `${name} => id: ${(_a2 = campaing.id) != null ? _a2 : "sin salvar"} || status: ${campaing.state} ||  mensajes enviados: ${(_b = campaing.contacts.filter((message) => message.status === "completed" /* COMPLETED */).length) != null ? _b : 0}/${campaing.contacts.length} || mensajes error envio: ${(_c = campaing.contacts.filter((message) => message.status === "error" /* ERROR */).length) != null ? _c : 0}`;
         })) == null ? void 0 : _a[1];
       }
+      static async listSavedActiveCampaigns() {
+        const campaignMongo = new CampaignMongo();
+        return (await campaignMongo.listAllActive()).map(({
+          completed,
+          contacts,
+          createDate,
+          created,
+          error,
+          id,
+          inProgress,
+          name,
+          state
+        }) => ({ selection: `${createDate.getTime()}-${name} => id: ${id} || status: ${state}`, id }));
+      }
       static listLoadedCampaings() {
-        return Array.from(this.Campaings.entries()).map((entry) => {
+        return Array.from(_CampaignsInfo.Campaings.entries()).map((entry) => {
           var _a, _b, _c;
           const [name, campaing] = entry;
           return `${name} => id: ${(_a = campaing.id) != null ? _a : "sin salvar"} || status: ${campaing.state} ||  mensajes enviados: ${(_b = campaing.contacts.filter((message) => message.status === "completed" /* COMPLETED */).length) != null ? _b : 0}/${campaing.contacts.length} || mensajes error envio: ${(_c = campaing.contacts.filter((message) => message.status === "error" /* ERROR */).length) != null ? _c : 0}`;
@@ -2993,7 +3460,7 @@ var init_AddCampaing = __esm({
         this.ListOptions = (options) => ({
           type: "list",
           name: "action",
-          message: "Selecciona una opcion",
+          message: "",
           choices: [
             // 'Crear Campaña',
             // 'Visualizar',
@@ -3061,7 +3528,7 @@ var init_CampaignParts = __esm({
         this.ListOptions = (options) => ({
           type: "list",
           name: "action",
-          message: "Selecciona una opcion",
+          message: "",
           choices: [
             "Contactos",
             "Imagenes",
@@ -3114,6 +3581,7 @@ var init_LoadedCampaigns = __esm({
     init_CliUtils();
     init_CampaingsInfo();
     init_CampaignParts();
+    init_CampaignMongo();
     LoadedCampaigns = class {
       constructor(back) {
         this.prompt = false;
@@ -3125,12 +3593,15 @@ var init_LoadedCampaigns = __esm({
           const campaignSelected = CampaignsInfo.getLoadedCampaign(selectCampaing.answer);
           const actionWithCampaign = await CLIUtils.createAutoComplete({
             name: "action",
-            message: `Que deseas hacer con la campa\xF1a: 
-        ${campaignSelected.createDate.getTime()}-${campaignSelected.configuration.campaignName}`,
+            message: `Que deseas hacer con la campa\xF1a: ${campaignSelected.createDate.getTime()}-${campaignSelected.configuration.campaignName}`,
             autocomplete: ["Salvar", "Ver Detalles", "atras"]
           });
           switch (actionWithCampaign.answer) {
             case "Salvar":
+              const campaignMongo = new CampaignMongo();
+              if (!!await campaignMongo.create(campaignSelected).catch((err) => console.log(err)))
+                console.log("Campa\xF1a ha sido Guardada");
+              return CLIProgram.setNextCommand(this.back);
               break;
             case "Ver Detalles":
               const campaginParts = new CampaginParts(this);
@@ -3146,7 +3617,82 @@ var init_LoadedCampaigns = __esm({
         this.ListOptions = (options) => ({
           type: "list",
           name: "action",
-          message: "Selecciona una opcion",
+          message: "",
+          choices: [
+            // 'Crear Campaña',
+            // 'Visualizar',
+            // 'atras'
+          ]
+        });
+        this.back = back;
+      }
+    };
+  }
+});
+
+// src/cli/Commands/Campaigns/SavedCampaigns.ts
+var SavedCampaigns;
+var init_SavedCampaigns = __esm({
+  "src/cli/Commands/Campaigns/SavedCampaigns.ts"() {
+    "use strict";
+    init_CLIProgram();
+    init_CliUtils();
+    init_CampaingsInfo();
+    init_CampaignParts();
+    init_CampaignMongo();
+    init_CampaignManager();
+    SavedCampaigns = class {
+      constructor(back) {
+        this.prompt = false;
+        this.manageOptions = async (options) => {
+          const action = options == null ? void 0 : options.action;
+          const savedCampaigns = await CampaignsInfo.listSavedActiveCampaigns();
+          const selections = savedCampaigns.map((selection) => selection.selection);
+          const selectCampaing = await CLIUtils.createAutoComplete({ name: "campaign", message: "Selecciona Campa\xF1a", autocomplete: Array.prototype.concat(selections, "atras") });
+          if (selectCampaing.answer === "atras")
+            return CLIProgram.setNextCommand(this.back);
+          const campaignSelected = await CampaignsInfo.getSavedCampaign(savedCampaigns.find((selection) => selection.selection === selectCampaing.answer).id);
+          const actionWithCampaign = await CLIUtils.createAutoComplete({
+            name: "action",
+            message: `Que deseas hacer con la campa\xF1a: ${campaignSelected.createDate.getTime()}-${campaignSelected.configuration.campaignName}`,
+            autocomplete: ["Correr", "Desactivar", "Ver Detalles", "Borrar", "atras"]
+          });
+          switch (actionWithCampaign.answer) {
+            case "Desactivar":
+              const deactivateCampaign = await CLIUtils.YesNoDialog({ name: "delete", message: "\xBFEstas seguro que deseas desactivar la campa\xF1a?" });
+              if (deactivateCampaign.answer) {
+                await new CampaignMongo().activate(campaignSelected, false) && console.log("campa\xF1a desactivada");
+              }
+              return CLIProgram.setNextCommand(this.back);
+              break;
+            case "Borrar":
+              const deleteCampaign = await CLIUtils.YesNoDialog({ name: "delete", message: "\xBFEstas seguro que deseas borrar la campa\xF1a?" });
+              if (deleteCampaign.answer) {
+                await new CampaignMongo().delete(campaignSelected) && console.log("campa\xF1a borrada");
+              }
+              return CLIProgram.setNextCommand(this.back);
+              break;
+            case "Correr":
+              const manager = new CampaignManager();
+              manager.scheduleCampaign(campaignSelected);
+              await manager.startProcess();
+              return CLIProgram.setNextCommand(this.back);
+              break;
+            case "Ver Detalles":
+              const campaginParts = new CampaginParts(this);
+              campaginParts.passInOptions = { action: "campaign", extraParams: campaignSelected };
+              return CLIProgram.setNextCommand(campaginParts);
+              break;
+            case "atras":
+              return CLIProgram.setNextCommand(this.back);
+              break;
+          }
+          return CLIProgram.setNextCommand(this.back);
+        };
+        this.ListOptions = (options) => ({
+          type: "list",
+          name: "action",
+          message: "",
           choices: [
             // 'Crear Campaña',
             // 'Visualizar',
@@ -3166,6 +3712,7 @@ var init_VisualizeCampaign = __esm({
     "use strict";
     init_CLIProgram();
     init_LoadedCampaigns();
+    init_SavedCampaigns();
     VisualizeCampaign = class {
       constructor(back) {
         this.manageOptions = (options) => {
@@ -3176,6 +3723,8 @@ var init_VisualizeCampaign = __esm({
               return CLIProgram.setNextCommand(loadedCampaigns);
               break;
             case "Ver Campa\xF1as Salvadas":
+              const savedCampaigns = new SavedCampaigns(this);
+              return CLIProgram.setNextCommand(savedCampaigns);
               break;
             case "atras":
               return CLIProgram.setNextCommand(this.back);
@@ -3186,7 +3735,7 @@ var init_VisualizeCampaign = __esm({
         this.ListOptions = (options) => ({
           type: "list",
           name: "action",
-          message: "Selecciona una opcion",
+          message: "",
           choices: [
             "Ver Campa\xF1as Cargadas",
             "Ver Campa\xF1as Salvadas",
@@ -3229,7 +3778,7 @@ var init_Campaigns = __esm({
         this.ListOptions = (options) => ({
           type: "list",
           name: "action",
-          message: "Selecciona una opcion",
+          message: "",
           choices: [
             "Crear Campa\xF1a",
             "Visualizar",
@@ -3243,7 +3792,7 @@ var init_Campaigns = __esm({
 });
 
 // src/cli/classes/CLIProgram.ts
-import inquirer2 from "inquirer";
+import inquirer from "inquirer";
 import { Subject as Subject3 } from "rxjs";
 var _CLIProgram, CLIProgram;
 var init_CLIProgram = __esm({
@@ -3253,6 +3802,7 @@ var init_CLIProgram = __esm({
     init_CLIPhones();
     init_AffiliatesMenu();
     init_Campaigns();
+    init_configuration();
     _CLIProgram = class _CLIProgram {
       constructor() {
         this.manageOptions = (options) => {
@@ -3272,7 +3822,7 @@ var init_CLIProgram = __esm({
               break;
             case "Mensajes":
               const messages = new Messages(this);
-              _CLIProgram.setNextCommand(messages);
+              return _CLIProgram.setNextCommand(messages);
               break;
             case "Salir":
               process.exit(0);
@@ -3282,13 +3832,18 @@ var init_CLIProgram = __esm({
         };
         _CLIProgram.baseCommand = this;
       }
+      static closeCurrentPrompt() {
+        !!_CLIProgram.currentPrompt && _CLIProgram.currentPrompt.ui.close();
+      }
       static setNextCommand(command, options) {
+        !!!conf().behaviour.historyVerbose && console.clear();
         command.passInOptions = options != null ? options : command.passInOptions;
         _CLIProgram.nextCommand = command;
+        _CLIProgram.nextOptions = options;
         let prompt = true;
         if (typeof command.prompt !== "undefined")
           prompt = command.prompt;
-        _CLIProgram.showMenu(_CLIProgram.nextCommand.ListOptions(options), prompt);
+        _CLIProgram.showMenu(_CLIProgram.nextCommand.ListOptions(_CLIProgram.nextOptions), prompt);
       }
       static backToBegining() {
         _CLIProgram.setNextCommand(_CLIProgram.baseCommand);
@@ -3297,7 +3852,7 @@ var init_CLIProgram = __esm({
         return {
           type: "list",
           name: "action",
-          message: "Selecciona una opcion",
+          message: "",
           choices: ["Telefonos", "Afiliados", "Campa\xF1as", "Mensajes", "Salir"]
         };
       }
@@ -3306,7 +3861,8 @@ var init_CLIProgram = __esm({
     _CLIProgram.showMenu = (options, prompt) => {
       if (!!!prompt)
         return _CLIProgram.menuNext.next({});
-      inquirer2.prompt(options).then((respuestas) => {
+      _CLIProgram.currentPrompt = inquirer.prompt(options);
+      _CLIProgram.currentPrompt.then((respuestas) => {
         _CLIProgram.menuNext.next(respuestas);
       });
     };
@@ -3314,13 +3870,215 @@ var init_CLIProgram = __esm({
   }
 });
 
+// src/ErrorHandling/classes/ErrorHandling.ts
+import { Subject as Subject4, takeUntil as takeUntil2 } from "rxjs";
+var ErrorHandling;
+var init_ErrorHandling = __esm({
+  "src/ErrorHandling/classes/ErrorHandling.ts"() {
+    "use strict";
+    ErrorHandling = class _ErrorHandling {
+      constructor() {
+        this.WSBLOCK = new Subject4();
+        this.UnexpectedError = new Subject4();
+        // fromEvent<{ err: Error, origin: string }>(process, 'uncaughtException')
+        this.UnexpectedBreaker = new Subject4();
+        this.errorCounter = 0;
+        this.errorConsecutiveLimit = 3;
+        this.errorConsecutiveIntervalSeconds = 10;
+        this.processUnhandledEventDeclaration();
+        this.handleUnexpected();
+        this.handleUnexpectedBreaker();
+      }
+      static get ErrorHandlingInstance() {
+        if (!!!_ErrorHandling.instance)
+          _ErrorHandling.instance = new _ErrorHandling();
+        return _ErrorHandling.instance;
+      }
+      emitWSAlert(client, message, state) {
+        return this.WSBLOCK.next({ client, message, waState: state });
+      }
+      processUnhandledEventDeclaration() {
+        process.on("uncaughtException", (err, origin) => {
+          this.UnexpectedError.next({ err, origin });
+        });
+      }
+      handleWsAlert() {
+        this.WSBLOCK.subscribe();
+      }
+      handleUnexpected() {
+        this.UnexpectedError.pipe(
+          takeUntil2(this.UnexpectedBreaker)
+        ).subscribe({
+          next: (val) => {
+            console.log(val.err.message);
+          },
+          complete: () => {
+            console.error("Major.... im burning up!!!! ");
+            process.exit(1);
+          }
+        });
+      }
+      handleUnexpectedBreaker() {
+        this.UnexpectedError.subscribe({
+          next: () => {
+            if (!!!this.lastError) {
+              this.lastError = /* @__PURE__ */ new Date();
+              this.errorCounter++;
+            } else if (Math.floor(((/* @__PURE__ */ new Date()).getTime() - this.lastError.getTime()) / 1e3) < this.errorConsecutiveIntervalSeconds)
+              this.errorCounter++;
+            else
+              this.errorCounter = 1;
+            this.lastError = /* @__PURE__ */ new Date();
+            console.log(this.errorCounter);
+            if (this.errorConsecutiveLimit < this.errorCounter)
+              return this.UnexpectedBreaker.next(true);
+          }
+        });
+      }
+    };
+  }
+});
+
+// src/Logging/classes/ConsoleStyles.ts
+var BasicLogStyle, BasicLogErrStyle, BoldLogBG, BoldErrBG, BasicUnderline, BasicDashed;
+var init_ConsoleStyles = __esm({
+  "src/Logging/classes/ConsoleStyles.ts"() {
+    "use strict";
+    BasicLogStyle = class {
+      constructor() {
+        this.bgColor = "#000";
+        this.underline = false;
+        this.bold = true;
+        this.fgColor = "#FFFFFF";
+      }
+    };
+    BasicLogErrStyle = class {
+      constructor() {
+        this.bgColor = "#000";
+        this.underline = false;
+        this.bold = true;
+        this.fgColor = "#FFFFFF";
+      }
+    };
+    BoldLogBG = class {
+      constructor() {
+        this.bgColor = "#FFF";
+        this.underline = false;
+        this.bold = true;
+        this.fgColor = "#000";
+      }
+    };
+    BoldErrBG = class {
+      constructor() {
+        this.bgColor = "#EBC3C3";
+        this.underline = false;
+        this.bold = true;
+        this.fgColor = "#E9A783";
+      }
+    };
+    BasicUnderline = class {
+      constructor() {
+        this.bgColor = "#000";
+        this.underline = true;
+        this.bold = true;
+        this.fgColor = "#FFFFFF";
+      }
+    };
+    BasicDashed = class {
+      constructor() {
+        this.bgColor = "#000";
+        this.underline = false;
+        this.bold = true;
+        this.fgColor = "#E9A783";
+        this.dashedBox = true;
+      }
+    };
+  }
+});
+
+// src/Logging/classes/ConsoleLogger.ts
+var ConsoleLogger;
+var init_ConsoleLogger = __esm({
+  "src/Logging/classes/ConsoleLogger.ts"() {
+    "use strict";
+    init_ConsoleStyles();
+    ConsoleLogger = class _ConsoleLogger {
+      constructor() {
+        this.LogStyle = new BasicLogStyle();
+        this.logErrStyle = new BasicLogErrStyle();
+        this.processColor = (message, { bgColor, bold, underline, fgColor }) => {
+          let format = this.chalk.hex(fgColor).bgHex(bgColor != null ? bgColor : "#FFFFFF");
+          return underline ? format.underline(message) : bold ? format.bold(message) : format(message);
+        };
+        this.printDashedLine = (message, style) => {
+          console.log(this.processColor(new Array(message.length).fill("-").join(""), style));
+        };
+        this.log = (message, options) => {
+          const logOptions = options != null ? options : this.LogStyle;
+          logOptions.dashedBox && this.printDashedLine(message, logOptions);
+          console.log(this.processColor(message, logOptions));
+          logOptions.dashedBox && this.printDashedLine(message, logOptions);
+        };
+        this.logErr = (message, options) => {
+          const logOptions = options != null ? options : this.logErrStyle;
+          console.log(this.processColor(message, logOptions));
+        };
+        this.logInfo = () => {
+        };
+        this.initLogger();
+      }
+      static get logger() {
+        if (!!!_ConsoleLogger.instance) {
+          _ConsoleLogger.instance = new _ConsoleLogger();
+        }
+        return _ConsoleLogger.instance;
+      }
+      initLogger() {
+        this.chalk = __require("chalk");
+      }
+      getLogByType(style) {
+        switch (style) {
+          case 1 /* err */:
+            return this.logErrStyle;
+          case 0 /* log */:
+            return this.LogStyle;
+        }
+      }
+      setLogStyle(type, { bgColor, fgColor, bold, underline, dashedBox }) {
+        this.setStyle(type, bgColor, fgColor, bold, underline, dashedBox);
+      }
+      setStyle(logType, bgColor, fgColor, bold, underline, dashedBox) {
+        const logSelected = this.getLogByType(logType);
+        if (!!bgColor)
+          logSelected.bgColor = bgColor;
+        if (!!fgColor)
+          logSelected.fgColor = fgColor;
+        if (typeof bold !== "undefined")
+          logSelected.bold = bold;
+        if (typeof underline !== "undefined")
+          logSelected.underline = underline;
+        if (typeof underline !== "undefined")
+          logSelected.dashedBox = dashedBox;
+      }
+    };
+  }
+});
+
 // src/Main.ts
-import mongoose7 from "mongoose";
+import mongoose8 from "mongoose";
 var require_Main = __commonJS({
   "src/Main.ts"() {
     init_CLIProgram();
+    init_configuration();
+    init_ErrorHandling();
+    init_ConsoleLogger();
+    init_ConsoleStyles();
+    var init_ErrorHandling2 = async () => {
+      const err = ErrorHandling.ErrorHandlingInstance;
+      return err;
+    };
     var init_moongoose = async () => {
-      return await mongoose7.connect(process.env.MONGOCONNECTIONSTRING).then(() => {
+      return await mongoose8.connect(conf().Mongo.connectionString).then(() => {
         console.log("Conexi\xF3n exitosa a la base de datos");
       }).catch((error) => {
         console.error("Error de conexi\xF3n a la base de datos:", error);
@@ -3328,7 +4086,18 @@ var require_Main = __commonJS({
     };
     var main = async () => {
       await init_moongoose();
+      const errorHandler = await init_ErrorHandling2();
       console.clear();
+      ConsoleLogger.logger.log("asd");
+      ConsoleLogger.logger.setLogStyle(0 /* log */, new BoldLogBG());
+      ConsoleLogger.logger.log("Este es un ejemplo de Log");
+      ConsoleLogger.logger.setLogStyle(0 /* log */, new BasicUnderline());
+      ConsoleLogger.logger.log("Este es un ejemplo de Log");
+      ConsoleLogger.logger.setLogStyle(0 /* log */, new BasicDashed());
+      ConsoleLogger.logger.log("Este es un ejemplo de Log dashed");
+      ConsoleLogger.logger.setLogStyle(1 /* err */, new BoldErrBG());
+      ConsoleLogger.logger.logErr("Este es un ejemplo de Error");
+      process.exit(0);
       const cli = new CLIProgram();
       CLIProgram.setNextCommand(cli);
       CLIProgram.menuNext.subscribe({

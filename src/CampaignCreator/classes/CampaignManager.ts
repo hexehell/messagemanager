@@ -217,6 +217,7 @@ export class MessageController {
 
         }
 
+        if(!!!clientSelected)
         clientSelected = this.params.clients!.find(x => x.getPhone() ===from)
 
 
@@ -224,6 +225,7 @@ export class MessageController {
         if (!!clientSelected) {
 
             console.log(clientSelected.getPhone(),to, message)
+
 
             return true
 

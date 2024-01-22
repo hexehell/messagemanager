@@ -1,8 +1,8 @@
-import { CLIUtils, FormPromptChoice, PromptAnswer, FormPromptChoiceAutoComplete, FormPromptChoiceYesNo } from "./CliUtils";
+import { CLIUtils, PromptInput, PromptAnswer, FormPromptChoiceAutoComplete, FormPromptChoiceYesNo } from "./CliUtils";
 
 export class CLIFormBuilder {
 
-    constructor(private choices: (FormPromptChoice | FormPromptChoiceAutoComplete | FormPromptChoiceYesNo)[]) { }
+    constructor(private choices: (PromptInput | FormPromptChoiceAutoComplete | FormPromptChoiceYesNo)[]) { }
 
     async prompt(): Promise<PromptAnswer[]> {
 
@@ -10,7 +10,7 @@ export class CLIFormBuilder {
 
         for (let i = 0; i < this.choices.length; i++) {
 
-            const choice: FormPromptChoice | FormPromptChoiceAutoComplete | FormPromptChoiceYesNo = this.choices[i]
+            const choice: PromptInput | FormPromptChoiceAutoComplete | FormPromptChoiceYesNo = this.choices[i]
 
 
             if ('yesnoQuestion' in choice) {

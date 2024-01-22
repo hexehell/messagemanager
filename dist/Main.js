@@ -23,44 +23,158 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 
 // src/cli/classes/CLIProgram.ts
-var import_inquirer2 = __toESM(require("inquirer"));
+var import_inquirer = __toESM(require("inquirer"));
 var import_rxjs4 = require("rxjs");
 
+// src/cli/utils/CliUtils.ts
+var import_cli_table = __toESM(require("cli-table"));
+var import_uuid = require("uuid");
+var CLIUtils = class _CLIUtils {
+  static async createEnterToContinue(message) {
+    await _CLIUtils.createInput({ name: "enter", message });
+  }
+  static async createInput({ name, message, initial }) {
+    const { Input } = require("enquirer");
+    const prompt = new Input({
+      message,
+      initial
+    });
+    return await prompt.run().then((answer) => {
+      return { answer, field: name };
+    }).catch(console.log);
+  }
+  static async YesNoDialog({ name, message }) {
+    const { Confirm } = require("enquirer");
+    const prompt = new Confirm({
+      name: "question",
+      message
+    });
+    return await prompt.run().then((answer) => {
+      return { answer, field: name };
+    }).catch(console.error);
+  }
+  static async createForm(message, choices) {
+    const { Form } = require("enquirer");
+    const prompt = new Form({
+      name: "something",
+      message,
+      choices
+    });
+    return await prompt.run().then((value) => value).catch(console.error);
+  }
+  static async createDateTimePicker({ name, message }) {
+    const inquirer2 = require("inquirer");
+    inquirer2.registerPrompt("datetime", require("inquirer-datepicker-prompt"));
+    var questions = [
+      {
+        type: "datetime",
+        name: "dt",
+        message: message + " (dd/MM/yyyy)",
+        format: ["dd", "/", "MM", "/", "yyyy"]
+      }
+    ];
+    return await inquirer2.prompt(questions).then((answer) => {
+      return { answer: answer.dt, field: name };
+    });
+  }
+  static async createAutoComplete({ name, autocomplete, message, fieldToShow }) {
+    const arrWithID = autocomplete.map((row) => {
+      return { show: fieldToShow ? row[fieldToShow] : row, id: (0, import_uuid.v4)() };
+    });
+    const arrShow = autocomplete.map((row) => fieldToShow ? row[fieldToShow] : row);
+    const { AutoComplete } = require("enquirer");
+    const prompt = new AutoComplete({
+      name: "autocomplete",
+      message,
+      limit: 10,
+      initial: 0,
+      choices: Array.from(arrShow.filter((x, i, a) => a.indexOf(x) == i))
+    });
+    const ans = await prompt.run().then((answer) => answer).catch((error) => console.log(error));
+    return { answer: ans, field: name };
+  }
+  static showVerticalTable(something) {
+    if (Array.isArray(something))
+      return console.table(something);
+    else
+      return console.table(Object.entries(something));
+  }
+  static showHorizontalTable(something, colsWidth) {
+    const values = something.map((entry) => Object.values(entry)).map((entry) => entry.map((val) => val));
+    const headers = something.map((entry) => Object.keys(entry))[0];
+    console.log(_CLIUtils.createHorizontalTable(headers, values, colsWidth).toString());
+  }
+  static createHorizontalTable(headers, body, colsWidth) {
+    let tbl;
+    if (!!!colsWidth)
+      tbl = new import_cli_table.default({ style: { "padding-right": 10 }, head: headers });
+    else
+      tbl = new import_cli_table.default({ style: { "padding-right": 10 }, head: headers, colWidths: colsWidth });
+    body.forEach((arr) => {
+      tbl.push(arr);
+    });
+    return tbl;
+  }
+  static createVerticalTable(something) {
+    const affTbl = new import_cli_table.default({ style: { "padding-right": 10 } });
+    Object.entries(something).map((entry) => {
+      let row = {};
+      if (typeof entry[1] === typeof Date) {
+        entry[1] = new Date(entry[1].getDate());
+      }
+      if (Array.isArray(entry[1])) {
+        entry[1] = entry[1].join(" ");
+      }
+      row[entry[0]] = entry[1];
+      affTbl.push(row);
+      return 0;
+    });
+    return affTbl;
+  }
+};
+
 // src/cli/Commands/Messages/classes/SendSimpleMessage.ts
-var import_inquirer = __toESM(require("inquirer"));
 var SendSimpleMessage = class {
   constructor(back) {
     this.manageOptions = async (options) => {
-      var _a, _b, _c;
+      var _a, _b;
       const messageCreation = (_b = (_a = this.passInOptions) == null ? void 0 : _a.extraParams) != null ? _b : {};
       const action = options == null ? void 0 : options.action;
       switch (action) {
         case "Preparar Mensaje":
           console.clear();
-          await import_inquirer.default.prompt({ message: "titulo del Mensaje", name: "titulo", type: "input" }).then((answer) => {
-            messageCreation.titulo = answer.titulo;
+          await CLIUtils.createInput({ name: "titulo", message: "titulo del Mensaje" }).then((answer) => {
+            messageCreation.titulo = answer.answer;
           });
-          await import_inquirer.default.prompt({ message: "texto del Mensaje", name: "message", type: "input" }).then((answer) => {
-            messageCreation.mensaje = answer.message;
+          await CLIUtils.createInput({ name: "texto", message: "texto del Mensaje" }).then((answer) => {
+            messageCreation.mensaje = answer.answer;
           });
+          console.table(messageCreation);
+          await CLIUtils.createEnterToContinue("presiona enter para continuar....");
           options.extraParams = messageCreation;
-          CLIProgram.setNextCommand(this, options);
+          return CLIProgram.setNextCommand(this, options);
           break;
         case "Agregar Afiliados u otros telefonos a enviar":
+          return CLIProgram.setNextCommand(this);
           break;
         case "Seleccionar telefonos Bots":
+          return CLIProgram.setNextCommand(this);
           break;
         case "Vista previa antes de Enviar":
           console.clear();
-          console.log({ ...(_c = this.passInOptions) == null ? void 0 : _c.extraParams });
-          CLIProgram.setNextCommand(this, options);
+          console.table(messageCreation);
+          await CLIUtils.createEnterToContinue("presiona enter para continuar....");
+          return CLIProgram.setNextCommand(this, options);
+          break;
+        case "atras":
+          return CLIProgram.setNextCommand(this.back);
           break;
       }
     };
     this.ListOptions = (options) => ({
       type: "list",
       name: "action",
-      message: "Selecciona una opcion",
+      message: "",
       choices: [
         "Preparar Mensaje",
         "Agregar Afiliados u otros telefonos a enviar",
@@ -101,7 +215,54 @@ var AbstractMessageData = class {
   }
 };
 
+// src/database/utils/Semaphore.ts
+var Semaphore = class {
+  /**
+   * Creates a semaphore that limits the number of concurrent Promises being handled
+   * @param {*} maxConcurrentRequests max number of concurrent promises being handled at any time
+   */
+  constructor(maxConcurrentRequests = 1) {
+    this.runningRequests = 0;
+    this.maxConcurrentRequests = 1;
+    this.currentRequests = [];
+    this.runningRequests = 0;
+    this.maxConcurrentRequests = maxConcurrentRequests;
+  }
+  /**
+   * Returns a Promise that will eventually return the result of the function passed in
+   * Use this to limit the number of concurrent function executions
+   * @param {*} fnToCall function that has a cap on the number of concurrent executions
+   * @param  {...any} args any arguments to be passed to fnToCall
+   * @returns Promise that will resolve with the resolved value as if the function passed in was directly called
+   */
+  callFunction(fnToCall, ...args) {
+    return new Promise((resolve, reject) => {
+      this.currentRequests.push({
+        resolve,
+        reject,
+        fnToCall,
+        args
+      });
+      this.tryNext();
+    });
+  }
+  tryNext() {
+    if (!this.currentRequests.length) {
+      return;
+    } else if (this.runningRequests < this.maxConcurrentRequests) {
+      let { resolve, reject, fnToCall, args } = this.currentRequests.shift();
+      this.runningRequests++;
+      let req = fnToCall(...args);
+      req.then((res) => resolve(res)).catch((err) => reject(err)).finally(() => {
+        this.runningRequests--;
+        this.tryNext();
+      });
+    }
+  }
+};
+
 // src/database/classes/Messages/classes/MessageMongo.ts
+var semaphore = new Semaphore(3);
 var MessageMongo = class extends AbstractMessageData {
   getAffByID(id) {
     throw new Error("Method not implemented.");
@@ -110,7 +271,9 @@ var MessageMongo = class extends AbstractMessageData {
     throw new Error("Method not implemented.");
   }
   async create(message) {
-    return !!await Message_schema_default.create(message);
+    return !!await semaphore.callFunction(async () => {
+      return !!await Message_schema_default.create(message);
+    });
   }
   findFirst(name) {
     throw new Error("Method not implemented.");
@@ -196,107 +359,6 @@ var MessageSender = class {
   }
 };
 
-// src/cli/utils/CliUtils.ts
-var import_cli_table = __toESM(require("cli-table"));
-var import_uuid = require("uuid");
-var CLIUtils = class _CLIUtils {
-  static async createInput({ name, message, initial }) {
-    const { Input } = require("enquirer");
-    const prompt = new Input({
-      message,
-      initial
-    });
-    return await prompt.run().then((answer) => {
-      return { answer, field: name };
-    }).catch(console.log);
-  }
-  static async YesNoDialog({ name, message }) {
-    const { Confirm } = require("enquirer");
-    const prompt = new Confirm({
-      name: "question",
-      message
-    });
-    return await prompt.run().then((answer) => {
-      return { answer, field: name };
-    }).catch(console.error);
-  }
-  static async createForm(message, choices) {
-    const { Form } = require("enquirer");
-    const prompt = new Form({
-      name: "something",
-      message,
-      choices
-    });
-    return await prompt.run().then((value) => value).catch(console.error);
-  }
-  static async createDateTimePicker({ name, message }) {
-    const inquirer3 = require("inquirer");
-    inquirer3.registerPrompt("datetime", require("inquirer-datepicker-prompt"));
-    var questions = [
-      {
-        type: "datetime",
-        name: "dt",
-        message: message + " (dd/MM/yyyy)",
-        format: ["dd", "/", "MM", "/", "yyyy"]
-      }
-    ];
-    return await inquirer3.prompt(questions).then((answer) => {
-      return { answer: answer.dt, field: name };
-    });
-  }
-  static async createAutoComplete({ name, autocomplete, message, fieldToShow }) {
-    const arrWithID = autocomplete.map((row) => {
-      return { show: fieldToShow ? row[fieldToShow] : row, id: (0, import_uuid.v4)() };
-    });
-    const arrShow = autocomplete.map((row) => fieldToShow ? row[fieldToShow] : row);
-    const { AutoComplete } = require("enquirer");
-    const prompt = new AutoComplete({
-      name: "autocomplete",
-      message,
-      limit: 10,
-      initial: 0,
-      choices: Array.from(arrShow.filter((x, i, a) => a.indexOf(x) == i))
-    });
-    const ans = await prompt.run().then((answer) => answer).catch((error) => console.log(error));
-    return { answer: ans, field: name };
-  }
-  static showVerticalTable(something) {
-    console.log(_CLIUtils.createVerticalTable(something).toString());
-  }
-  static showHorizontalTable(something, colsWidth) {
-    const values = something.map((entry) => Object.values(entry)).map((entry) => entry.map((val) => val));
-    const headers = something.map((entry) => Object.keys(entry))[0];
-    console.log(_CLIUtils.createHorizontalTable(headers, values, colsWidth).toString());
-  }
-  static createHorizontalTable(headers, body, colsWidth) {
-    let tbl;
-    if (!!!colsWidth)
-      tbl = new import_cli_table.default({ style: { "padding-right": 10 }, head: headers });
-    else
-      tbl = new import_cli_table.default({ style: { "padding-right": 10 }, head: headers, colWidths: colsWidth });
-    body.forEach((arr) => {
-      tbl.push(arr);
-    });
-    return tbl;
-  }
-  static createVerticalTable(something) {
-    const affTbl = new import_cli_table.default({ style: { "padding-right": 10 } });
-    Object.entries(something).map((entry) => {
-      let row = {};
-      if (typeof entry[1] === typeof Date) {
-        entry[1] = new Date(entry[1].getDate());
-      }
-      if (Array.isArray(entry[1])) {
-        entry[1] = entry[1].join(" ");
-      }
-      row[entry[0]] = entry[1];
-      affTbl.push(row);
-      return 0;
-    });
-    return affTbl;
-  }
-};
-
 // src/transformers/PhonesInfo.ts
 var fs = __toESM(require("fs-extra"));
 
@@ -356,6 +418,37 @@ var BotMongo = class extends AbstractBotData {
   }
 };
 
+// src/conf/configuration.ts
+var import_dotenv = __toESM(require("dotenv"));
+var confObj = void 0;
+var init_dotenv = async () => {
+  return import_dotenv.default.config();
+};
+var castBoolProp = (prop) => {
+  return !!prop && ((prop == null ? void 0 : prop.toLocaleLowerCase()) === "true" || parseInt(prop != null ? prop : "") === 1);
+};
+var conf = () => {
+  var _a, _b;
+  if (!!!confObj) {
+    init_dotenv();
+    confObj = {
+      Paths: {
+        toPhones: (_a = process.env.PATHTOPHONES) != null ? _a : ""
+      },
+      Mongo: {
+        connectionString: (_b = process.env.MONGOCONNECTIONSTRING) != null ? _b : ""
+      },
+      Testing: {
+        sending: castBoolProp(process.env.SENDING)
+      },
+      behaviour: {
+        historyVerbose: castBoolProp(process.env.HISTORYVERBOSE)
+      }
+    };
+  }
+  return confObj;
+};
+
 // src/transformers/PhonesInfo.ts
 var PhoneTypes = /* @__PURE__ */ ((PhoneTypes3) => {
   PhoneTypes3["wwjs"] = "wwjs";
@@ -363,14 +456,20 @@ var PhoneTypes = /* @__PURE__ */ ((PhoneTypes3) => {
   PhoneTypes3["meta"] = "meta";
   return PhoneTypes3;
 })(PhoneTypes || {});
+var PhonesTypesSupported = ["wwjs" /* wwjs */];
 var _PhonesInfo = class _PhonesInfo {
   static getPhonesfrom(phoneType) {
-    return _PhonesInfo.ListPhonesTypes().filter((type) => phoneType.toLocaleLowerCase() === type.toLocaleLowerCase()).map((type) => `${process.env.PATHTOPHONES}/${type}`).flat(1).map((pathTo) => fs.readdirSync(pathTo)).flat(1);
+    return _PhonesInfo.listAvailablePhonesTypes().filter((type) => phoneType.toLocaleLowerCase() === type.toLocaleLowerCase()).map((type) => `${conf().Paths.toPhones}/${type}`).flat(1).map((pathTo) => fs.readdirSync(pathTo)).flat(1);
   }
-  static async getBots(phoneType) {
+  static async getSavedBotsByType(phoneType) {
     const botBD = new BotMongo();
     const savedPhones = await botBD.listAllByPhoneId();
     return savedPhones.filter((bot) => bot.botType === phoneType.toLocaleLowerCase());
+  }
+  static async getAllSavedBots() {
+    const botBD = new BotMongo();
+    const savedPhones = await botBD.listAllByPhoneId();
+    return savedPhones;
   }
   static evaluateTypePath(type, path2) {
     switch (type.toLocaleLowerCase()) {
@@ -382,7 +481,9 @@ var _PhonesInfo = class _PhonesInfo {
   static selectAvailablePhonesClients(phones) {
     return phones.length !== 0 ? Array.from(_PhonesInfo.PhonesAvailables.values()).map(({ bot, client }) => ({ phone: bot.phone, client })).filter(({ phone }) => !!phones.find((selected) => phone === selected)).map((phone) => phone.client) : Array.from(_PhonesInfo.PhonesAvailables.values()).map(({ client }) => client);
   }
-  static getAllAvailablePhonesForChoosing() {
+  // static listAllAvailablePhones():Bot[]{
+  // }
+  static listAllAvailablePhonesForChoosing() {
     return Array.from(_PhonesInfo.PhonesAvailables.keys());
   }
   static getClientByPhone(phone) {
@@ -397,13 +498,13 @@ var _PhonesInfo = class _PhonesInfo {
   }
 };
 _PhonesInfo.PhonesAvailables = /* @__PURE__ */ new Map();
-_PhonesInfo.ListPhonesTypes = () => {
-  return Array.from(Object.keys(PhoneTypes));
+_PhonesInfo.listAvailablePhonesTypes = () => {
+  return Array.from(Object.keys(PhoneTypes).filter((type) => !!PhonesTypesSupported.find((x) => x === type)));
 };
 _PhonesInfo.getAvailablePhoneTypes = () => {
-  const listTypes = _PhonesInfo.ListPhonesTypes();
-  return fs.readdirSync(process.env.PATHTOPHONES).filter((file) => fs.statSync(`${process.env.PATHTOPHONES}/${file}`).isDirectory()).filter((dir) => !!listTypes.find((type) => type.toLocaleLowerCase() === dir.toLocaleLowerCase())).filter(
-    (type) => fs.readdirSync(`${process.env.PATHTOPHONES}/${type}`).filter((dir) => _PhonesInfo.evaluateTypePath(type, dir)).some((x) => x)
+  const listTypes = _PhonesInfo.listAvailablePhonesTypes();
+  return fs.readdirSync(conf().Paths.toPhones).filter((file) => fs.statSync(`${conf().Paths.toPhones}/${file}`).isDirectory()).filter((dir) => !!listTypes.find((type) => type.toLocaleLowerCase() === dir.toLocaleLowerCase())).filter(
+    (type) => fs.readdirSync(`${conf().Paths.toPhones}/${type}`).filter((dir) => _PhonesInfo.evaluateTypePath(type, dir)).some((x) => x)
   );
 };
 var PhonesInfo = _PhonesInfo;
@@ -433,8 +534,8 @@ var TestMessage = class {
     this.ListOptions = (options) => ({
       type: "list",
       name: "action",
-      message: "Selecciona una opcion",
-      choices: Array.prototype.concat(PhonesInfo.getAllAvailablePhonesForChoosing(), ["atras"])
+      message: "",
+      choices: Array.prototype.concat(PhonesInfo.listAllAvailablePhonesForChoosing(), ["atras"])
     });
     this.back = back;
   }
@@ -462,7 +563,7 @@ var Messages = class {
     this.ListOptions = (options) => ({
       type: "list",
       name: "action",
-      message: "Selecciona una opcion",
+      message: "",
       choices: [
         "Enviar Mensaje simple",
         "Enviar Mensaje de Prueba",
@@ -478,16 +579,28 @@ var import_fs = __toESM(require("fs"));
 var import_rxjs = require("rxjs");
 var ListPhones = class {
   constructor(back) {
-    this.manageOptions = (options) => {
-      PhonesInfo.getAvailablePhonesByType(options.action).map(({ bot }) => bot.phone).forEach((phone) => console.log(phone));
-      CLIProgram.setNextCommand(this.back);
+    this.manageOptions = async (options) => {
+      switch (options.action) {
+        case "cargados":
+          return CLIProgram.setNextCommand(this.back);
+          break;
+        case "salvados":
+          const phones = await PhonesInfo.getAllSavedBots();
+          CLIUtils.showHorizontalTable(phones);
+          return CLIProgram.setNextCommand(this.back);
+          break;
+        case "atras":
+          return CLIProgram.setNextCommand(this.back);
+          break;
+      }
+      return CLIProgram.setNextCommand(this.back);
     };
     this.ListOptions = () => {
-      const options = Array.prototype.concat(PhonesInfo.ListPhonesTypes(), ["atras"]);
+      const options = Array.prototype.concat("cargados", "salvados", "atras");
       return {
         type: "list",
         name: "action",
-        message: "Selecciona una opcion",
+        message: "",
         choices: options
       };
     };
@@ -586,12 +699,12 @@ var ClientWwjs = class extends import_node_events.EventEmitter {
   }
   async sendMessageImage(chatId, image, caption) {
     let mediaPath = (0, import_uuid2.v4)();
-    const [dataInfo, base64] = image.data.split(",");
-    const mimetype = dataInfo.replace("data:", "").replace(";base64", "");
-    mediaPath = import_node_path.default.join("./media", mediaPath + "." + mimetype.replace("image/", ""));
+    const base64 = image.data;
+    const mimetype = image.mimetype.replace("data:", "").replace(";base64", "").replace("image/", "");
+    mediaPath = import_node_path.default.join("./media", mediaPath + "." + mimetype);
     import_fs_extra.default.writeFileSync(mediaPath, Buffer.from(base64, "base64"));
     const content = MessageWwjs.fromFilePath(mediaPath);
-    const messageSent = await this.wwjsClient.sendMessage(chatId, content, { caption });
+    const messageSent = await this.wwjsClient.sendMessage(chatId + "@c.us", content, { caption });
     try {
       import_fs_extra.default.unlinkSync(mediaPath);
     } catch (err) {
@@ -603,9 +716,27 @@ var ClientWwjs = class extends import_node_events.EventEmitter {
     this.wwjsClient.initialize();
     this.emit("init" /* init */, this);
   }
+  async parseMessage(something) {
+    const chatWwjs = await something.getChat();
+    const chat = new ChatWwjs(chatWwjs);
+    return new MessageWwjs(something, chat);
+  }
   wwjsParsedEvents() {
     this.wwjsClient.on("qr" /* qr */, (qr) => this.emit("qr" /* qr */, qr));
     this.wwjsClient.on("ready" /* ready */, () => this.emit("ready" /* ready */, this));
+    this.wwjsClient.on("change_state" /* change_state */, (something) => this.emit("change_state" /* change_state */, something));
+    this.wwjsClient.on("message" /* message */, async (message) => {
+      this.emit("message" /* message */, this.parseMessage(message));
+    });
+    this.wwjsClient.on("media_uploaded", async (message) => {
+      this.emit("message" /* message */, this.parseMessage(message));
+    });
+    this.wwjsClient.on("message_ack", async (message, ack) => {
+      this.emit("message" /* message */, this.parseMessage(message));
+    });
+    this.wwjsClient.on("message_edit", async (message) => {
+      this.emit("message" /* message */, this.parseMessage(message));
+    });
   }
   async getChats() {
     return (await this.wwjsClient.getChats()).map((chat) => {
@@ -689,6 +820,16 @@ var WwjsCreator = class extends PhoneCreator {
   constructor() {
     super();
     this.BotBD = new BotMongo();
+    this.state = async (something) => {
+      console.info(`state: ${something}`);
+      if (!![
+        import_whatsapp_web2.WAState.PROXYBLOCK,
+        import_whatsapp_web2.WAState.SMB_TOS_BLOCK,
+        import_whatsapp_web2.WAState.TOS_BLOCK
+      ].find((evt) => evt === something)) {
+        console.error(something);
+      }
+    };
     this.reconnect = async ({ id, phone }) => {
       const savedPath = ``;
       this.clientId = id;
@@ -708,6 +849,8 @@ var WwjsCreator = class extends PhoneCreator {
       this.ready$ = (0, import_rxjs2.fromEvent)(clientTransformed, "ready" /* ready */);
       this.reloaded$ = (0, import_rxjs2.fromEvent)(clientTransformed, "reloaded" /* reloaded */);
       this.saveError$ = (0, import_rxjs2.fromEvent)(clientTransformed, "loadError" /* loadError */);
+      this.state$ = (0, import_rxjs2.fromEvent)(clientTransformed, "change_state" /* change_state */);
+      this.state$.subscribe((something) => this.state(something));
       this.init$.subscribe((client2) => this.initReload(client2));
       this.ready$.subscribe((client2) => this.reloading(client2));
       clientTransformed.initialize();
@@ -728,20 +871,21 @@ var WwjsCreator = class extends PhoneCreator {
       this.ready$ = (0, import_rxjs2.fromEvent)(clientTransformed, "ready" /* ready */);
       this.saved$ = (0, import_rxjs2.fromEvent)(clientTransformed, "saved" /* saved */);
       this.saveError$ = (0, import_rxjs2.fromEvent)(clientTransformed, "loadError" /* loadError */);
+      this.message$ = (0, import_rxjs2.fromEvent)(clientTransformed, "message" /* message */);
       const savedAndClosed$ = this.saved$.pipe((0, import_rxjs2.concatMap)((client2) => {
         var _a;
         return (0, import_rxjs2.of)(client2 ? (_a = this.spiner) == null ? void 0 : _a.success({ text: "telefono agregado" }) : "");
       }), (0, import_rxjs2.concatMap)(() => (0, import_rxjs2.of)("")));
-      const return$ = (0, import_rxjs2.race)(savedAndClosed$, this.saveError$);
+      const return$ = (0, import_rxjs2.race)(savedAndClosed$, this.saveError$).pipe((0, import_rxjs2.first)()).pipe((0, import_rxjs2.timeout)(timeoutInSeconds * 1e3), (0, import_rxjs2.catchError)((err) => {
+        clientTransformed.disconnect().catch();
+        return (0, import_rxjs2.of)("");
+      }));
       const subsqr = qr$.subscribe((qr) => this.qr(qr));
       this.ready$.subscribe((client2) => this.ready(client2));
       this.init$.subscribe((client2) => this.init(client2));
       this.saved$.subscribe((client2) => this.saved(client2));
       clientTransformed.initialize();
-      return (0, import_rxjs2.firstValueFrom)(return$.pipe((0, import_rxjs2.first)()).pipe((0, import_rxjs2.timeout)(timeoutInSeconds * 1e3), (0, import_rxjs2.catchError)((err) => {
-        clientTransformed.disconnect().catch();
-        return (0, import_rxjs2.of)("");
-      })));
+      return (0, import_rxjs2.firstValueFrom)(return$);
     };
     this.qr = (qr) => {
       var _a;
@@ -772,8 +916,11 @@ var WwjsCreator = class extends PhoneCreator {
     this.cancelQR = () => {
     };
   }
+  message(message) {
+    throw new Error("Method not implemented.");
+  }
   save(client) {
-    const pathToSave = process.env.PATHTOPHONES + `wwjs/session-${client.getPhone()}`;
+    const pathToSave = conf().Paths.toPhones + `wwjs/session-${client.getPhone()}`;
     try {
     } catch (err) {
       client == null ? void 0 : client.clientSavingError(typeof err === "string" ? err : err.message);
@@ -796,7 +943,7 @@ var TurnOnPhone = class {
       const action = options == null ? void 0 : options.action;
       switch (action.toLocaleLowerCase()) {
         case "wwjs":
-          const savedPhones = await PhonesInfo.getBots(options.action);
+          const savedPhones = await PhonesInfo.getSavedBotsByType(options.action);
           const selectionPhones = Array.prototype.concat(savedPhones.map((bot) => bot.phone), ["atras"]);
           const phoneKeySelected = (await CLIUtils.createAutoComplete({ name: "available", message: "elige un telefono disponible", autocomplete: selectionPhones })).answer.toString();
           if (phoneKeySelected === "atras")
@@ -812,7 +959,7 @@ var TurnOnPhone = class {
       }
     };
     this.ListOptions = () => {
-      const options = Array.prototype.concat(PhonesInfo.ListPhonesTypes(), ["atras"]);
+      const options = Array.prototype.concat("todos", PhonesInfo.listAvailablePhonesTypes(), "atras");
       return {
         type: "list",
         name: "action",
@@ -838,12 +985,13 @@ var AddPhone = class {
           return CLIProgram.setNextCommand(this.back);
           break;
       }
+      return CLIProgram.setNextCommand(this.back);
     };
     this.ListOptions = (options) => ({
       type: "list",
       name: "action",
       message: "Selecciona un tipo de bot",
-      choices: Array.prototype.concat(PhonesInfo.ListPhonesTypes(), ["atras"])
+      choices: Array.prototype.concat(PhonesInfo.listAvailablePhonesTypes(), ["atras"])
     });
     this.back = back;
   }
@@ -882,7 +1030,7 @@ var CLIPhones = class {
       const optionsList = {
         type: "list",
         name: "action",
-        message: "Selecciona una opcion",
+        message: "",
         choices: [
           "Listar telefonos",
           "Agregar telefono",
@@ -1157,6 +1305,29 @@ var AffiliateMongo = class extends AbstractAffiliateData {
 
 // src/cli/Commands/Affiliates/classes/Search.ts
 var import_nanospinner3 = require("nanospinner");
+
+// src/cli/Commands/Affiliates/classes/ShowAffiliate.ts
+var Table2 = require("cli-table");
+var ShowAffiliate = class {
+  constructor(command) {
+    this.prompt = false;
+    this.manageOptions = async (options) => {
+      var _a;
+      const dbAffiliate = new AffiliateMongo();
+      const AffSelected = await dbAffiliate.getAffByID((_a = this.passInOptions) == null ? void 0 : _a.extraParams.id);
+      CLIUtils.showVerticalTable(AffSelected);
+      await CLIUtils.createEnterToContinue("presione enter para continuar...");
+      return CLIProgram.setNextCommand(this.back);
+    };
+    this.ListOptions = () => {
+      const optionsList = {};
+      return optionsList;
+    };
+    this.back = command;
+  }
+};
+
+// src/cli/Commands/Affiliates/classes/Search.ts
 var SearchAffiliate = class {
   constructor(back, selectedCommand) {
     this.selectedCommand = selectedCommand;
@@ -1182,7 +1353,7 @@ var SearchAffiliate = class {
       spinner.stop();
       const displaySelected = (await CLIUtils.createAutoComplete({ name: "name", autocomplete: displayAff, message: "Selecciona el nombre" })).answer.toString();
       let selected = listAff.filter((x) => x.name === displaySelected)[0];
-      if (displayAff.filter((x) => x.toLocaleLowerCase() === displaySelected.toLocaleLowerCase()).length) {
+      if (displayAff.filter((x) => x.toLocaleLowerCase() === displaySelected.toLocaleLowerCase()).length > 1) {
         console.log("existen multiples opciones para este nombre. Especifique");
         selected = await this.promptList(listAff.filter((x) => x.name === displaySelected));
       }
@@ -1195,12 +1366,18 @@ var SearchAffiliate = class {
       const displayAff = listAff.map((x) => x.phone);
       spinner.stop();
       const displaySelected = (await CLIUtils.createAutoComplete({ name: "phone", autocomplete: displayAff, message: "Selecciona el telefono" })).answer.toString();
-      let selected = listAff.filter((x) => x.name === displaySelected)[0];
-      if (displayAff.filter((x) => x.toLocaleLowerCase() === displaySelected.toLocaleLowerCase()).length) {
+      let selected = listAff.filter((x) => x.phone === displaySelected)[0];
+      if (displayAff.filter((x) => x.toLocaleLowerCase() === displaySelected.toLocaleLowerCase()).length > 1) {
         console.log("existen multiples opciones para este telefono. Especifique");
         selected = await this.promptList(listAff.filter((x) => x.phone === displaySelected));
       }
-      return CLIProgram.setNextCommand(this.selectedCommand, { extraParams: selected });
+      if (!!selected) {
+        const showAff = new ShowAffiliate(this);
+        showAff.passInOptions = { action: "show", extraParams: selected };
+        showAff.prompt = false;
+        return CLIProgram.setNextCommand(showAff);
+      }
+      return CLIProgram.setNextCommand(this.back);
     };
     this.ListOptions = () => {
       const optionsList = [{
@@ -1229,26 +1406,6 @@ var SearchAffiliate = class {
     });
     let selected = await prompt.run().then((answer) => answer.split("-")[0].trim()).catch(console.error);
     return arr.filter((x) => x.id === selected)[0];
-  }
-};
-
-// src/cli/Commands/Affiliates/classes/ShowAffiliate.ts
-var Table2 = require("cli-table");
-var ShowAffiliate = class {
-  constructor(command) {
-    this.prompt = false;
-    this.manageOptions = async (options) => {
-      var _a;
-      const dbAffiliate = new AffiliateMongo();
-      const AffSelected = await dbAffiliate.getAffByID((_a = this.passInOptions) == null ? void 0 : _a.extraParams.id);
-      CLIUtils.showVerticalTable(AffSelected);
-      CLIProgram.setNextCommand(this.back);
-    };
-    this.ListOptions = () => {
-      const optionsList = {};
-      return optionsList;
-    };
-    this.back = command;
   }
 };
 
@@ -1420,6 +1577,7 @@ var CreateAffiliate = class {
       CLIProgram.setNextCommand(this.back);
     };
     this.ListOptions = () => {
+      !!!conf().behaviour.historyVerbose && console.clear();
       const optionsList = {};
       return optionsList;
     };
@@ -1463,7 +1621,7 @@ var AffiliatesMenu = class {
       const optionsList = {
         type: "list",
         name: "action",
-        message: "Selecciona una opcion",
+        message: "",
         choices: [
           "Listar",
           "Buscar",
@@ -1507,6 +1665,25 @@ var DialogNFD = class extends AbstractDialog {
     return dialog(config).then((dir) => dir.length > 0 ? dir[0] : "").catch((err) => "");
   }
 };
+
+// src/database/classes/Campaigns/enum/ScheduleState.ts
+var ScheduleState = /* @__PURE__ */ ((ScheduleState2) => {
+  ScheduleState2["CREATED"] = "created";
+  ScheduleState2["STARTPROCESS"] = "startProcess";
+  ScheduleState2["OVERDUE"] = "overdue";
+  ScheduleState2["INPROGRESS"] = "inprogress";
+  ScheduleState2["COMPLETED"] = "completed";
+  ScheduleState2["COMPLETEDOVERDUE"] = "completedOverdue";
+  ScheduleState2["DEACTIVATED"] = "deactivated";
+  return ScheduleState2;
+})(ScheduleState || {});
+var MessageStatus = /* @__PURE__ */ ((MessageStatus2) => {
+  MessageStatus2["CREATED"] = "created";
+  MessageStatus2["INPROGRESS"] = "inprogress";
+  MessageStatus2["COMPLETED"] = "completed";
+  MessageStatus2["ERROR"] = "error";
+  return MessageStatus2;
+})(MessageStatus || {});
 
 // src/CampaignCreator/classes/CampaignManager.ts
 var fs4 = __toESM(require("fs"));
@@ -1790,6 +1967,21 @@ var Table4 = class _Table {
   }
 };
 
+// src/database/classes/Campaigns/interfaces/Configuration.ts
+var TimeUnit = /* @__PURE__ */ ((TimeUnit2) => {
+  TimeUnit2["second"] = "second";
+  TimeUnit2["minute"] = "minute";
+  TimeUnit2["hour"] = "hour";
+  TimeUnit2["day"] = "day";
+  return TimeUnit2;
+})(TimeUnit || {});
+var SendMode = /* @__PURE__ */ ((SendMode2) => {
+  SendMode2["random"] = "random";
+  SendMode2["consecutive"] = "consecutive";
+  SendMode2["nowait"] = "nowait";
+  return SendMode2;
+})(SendMode || {});
+
 // src/CampaignCreator/classes/CampaignCreator.ts
 var CampaignCreator = class {
   constructor(campaignConfiguration = {
@@ -1809,7 +2001,8 @@ var CampaignCreator = class {
     STARTTIMEFIELD: "STARTTIME",
     ENDDATEFIELD: "ENDDATE",
     ENDTIMEFIELD: "ENDTIME",
-    CAMPAIGNNAME: "CAMPAIGNNAME"
+    CAMPAIGNNAME: "CAMPAIGNNAME",
+    RAMPFIELD: "RAMPFIELD"
   }) {
     this.campaignConfiguration = campaignConfiguration;
   }
@@ -1819,18 +2012,22 @@ var CampaignCreator = class {
     const tblContacts = await this.getTableJustText(workbook.getWorksheet(this.campaignConfiguration.SHEETCONTACTS));
     const tblImages = await this.getTableWithImages(workbook.getWorksheet(this.campaignConfiguration.SHEETIMAGES));
     const tblConf = await this.getTableJustText(workbook.getWorksheet(this.campaignConfiguration.SHEETCONF));
-    const contacts = !!tblContacts ? await this.createContacts(tblContacts) : void 0;
+    let contacts = !!tblContacts ? await this.createContacts(tblContacts) : void 0;
     const images = !!tblImages ? await this.createImages(tblImages) : void 0;
-    const conf = !!tblConf ? (await this.createConfiguration(tblConf))[0] : void 0;
+    const conf2 = !!tblConf ? (await this.createConfiguration(tblConf))[0] : void 0;
     if ((contacts == null ? void 0 : contacts.length) > 100)
-      conf.executionRamp = 40;
+      conf2.executionRamp = 40;
+    contacts = this.avoidContactRepetition(contacts);
     return {
-      configuration: conf,
+      configuration: conf2,
       contacts,
       createDate: /* @__PURE__ */ new Date(),
       images,
       state: "created" /* CREATED */
     };
+  }
+  avoidContactRepetition(contacts) {
+    return contacts.filter((x, i, a) => a.indexOf(x) == i);
   }
   validateContacts(contacts) {
     return !!!contacts.find(({ from: from5, to, message }) => !(!!from5 && !!to && !!message));
@@ -1840,7 +2037,7 @@ var CampaignCreator = class {
   }
   async createConfiguration(confTable) {
     return Array.from(confTable.rows.values()).map((row) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
       let [latencyInstruction, unit, mode, startDate, startTime, endDate, endTime, campaignName, executionRamp] = [
         (_b = (_a = row.getCellByString(this.campaignConfiguration.LATENCYFIELD)) == null ? void 0 : _a.value) != null ? _b : "",
         (_d = (_c = row.getCellByString(this.campaignConfiguration.UNITFIELD)) == null ? void 0 : _c.value) != null ? _d : "",
@@ -1850,7 +2047,7 @@ var CampaignCreator = class {
         (_l = (_k = row.getCellByString(this.campaignConfiguration.ENDDATEFIELD)) == null ? void 0 : _k.value) != null ? _l : "",
         (_n = (_m = row.getCellByString(this.campaignConfiguration.ENDTIMEFIELD)) == null ? void 0 : _m.value) != null ? _n : "",
         (_p = (_o = row.getCellByString(this.campaignConfiguration.CAMPAIGNNAME)) == null ? void 0 : _o.value) != null ? _p : "",
-        (_r = (_q = row.getCellByString(this.campaignConfiguration.RAMPFIELD)) == null ? void 0 : _q.value) != null ? _r : ""
+        (_r = (_q = row.getCellByString(this.campaignConfiguration.RAMPFIELD)) == null ? void 0 : _q.value) != null ? _r : "15"
       ];
       const configuration = {
         behaviour: {
@@ -1861,10 +2058,16 @@ var CampaignCreator = class {
         startDate: this.getDateFromString(startDate, startTime),
         endDate: this.getDateFromString(endDate, endTime),
         campaignName,
-        executionRamp: (_s = parseInt(executionRamp)) != null ? _s : 5
+        executionRamp: parseInt(executionRamp)
       };
       return configuration;
     });
+  }
+  processMessage(message, messageMap) {
+    messageMap.forEach((messageMap2) => {
+      message = message.replace(`[${messageMap2.key}]`, messageMap2.value);
+    });
+    return message;
   }
   async createContacts(contactTable) {
     return Array.from(contactTable.rows.values()).map((row) => {
@@ -1888,6 +2091,7 @@ var CampaignCreator = class {
           value: cell.value
         };
       });
+      contact.message = this.processMessage(contact.message, contact.messageMap);
       return contact;
     });
   }
@@ -2019,37 +2223,8 @@ var CampaignCreator = class {
   }
   async getTableJustText(Sheet) {
     const table = Table4.fromScratch();
-    let rows = Sheet.getRows(1, Sheet.rowCount);
-    for (let row of rows) {
-      let cellValues = row.model ? row.model.cells.map((cell) => {
-        var _a;
-        return (_a = cell.value) == null ? void 0 : _a.toString();
-      }) : void 0;
-      if (cellValues.length < 1)
-        continue;
-      if (!table.HeadersBeenSet) {
-        table.addHeaderRow(cellValues);
-        continue;
-      }
-      if (!table.addRow(
-        cellValues
-      )) {
-        cellValues = [];
-        const insertCells = [];
-        row.eachCell({ includeEmpty: true }, (cell, index) => {
-          insertCells.push(
-            new Promise((resolve) => {
-              cellValues.push(cell.value ? cell.value.toString() : void 0);
-              resolve(1);
-            })
-          );
-        });
-        await Promise.all(insertCells);
-      } else
-        continue;
-      if (!table.addRow(cellValues))
-        continue;
-    }
+    await this.addHeaders(table, Sheet);
+    await this.addTextCells(table, Sheet);
     return table.rows.size > 0 ? table : void 0;
   }
 };
@@ -2064,38 +2239,55 @@ var SchedulerEventsEmitter = class {
     this.scheduler = scheduler;
   }
   start() {
+    var _a;
     this.scheduler.emit("started" /* started */);
+    (_a = this.scheduler.callbacks) == null ? void 0 : _a.start(this.scheduler);
   }
-  prepare() {
+  prepare(resume) {
+    var _a;
     this.scheduler.emit("prepare" /* prepare */);
+    (_a = this.scheduler.callbacks) == null ? void 0 : _a.prepare(resume);
   }
   ready() {
+    var _a;
     this.scheduler.emit("ready" /* ready */);
+    (_a = this.scheduler.callbacks) == null ? void 0 : _a.ready();
   }
   pause() {
     this.scheduler.emit("paused" /* paused */);
   }
   dispatch() {
+    var _a;
     this.scheduler.emit("dispatch" /* dispatch */);
+    (_a = this.scheduler.callbacks) == null ? void 0 : _a.dispatch();
   }
   message(message) {
     this.scheduler.emit("message" /* message */, message);
   }
   messageEnd(message) {
+    var _a;
     this.scheduler.emit("messageEnd" /* messageEnd */, message);
+    (_a = this.scheduler.callbacks) == null ? void 0 : _a.sendMessageEnd(message.properties.contact);
   }
   messageError(message) {
+    var _a;
     this.scheduler.emit("messageError" /* messageError */, message);
+    (_a = this.scheduler.callbacks) == null ? void 0 : _a.sendMessageError(message.error, message.properties.contact);
   }
   finish() {
+    var _a;
     this.scheduler.emit("finished" /* finished */);
+    (_a = this.scheduler.callbacks) == null ? void 0 : _a.finish();
   }
   overdue() {
+    var _a;
     this.scheduler.emit("overdue" /* overdue */);
+    (_a = this.scheduler.callbacks) == null ? void 0 : _a.overdue();
   }
 };
 var SchedulerParams = class {
   constructor() {
+    this.ResumeSchedule = [];
     this.messagesScheduled = [];
     this.messagesDispatched = /* @__PURE__ */ new Map();
     this.messagesEnded = [];
@@ -2118,13 +2310,17 @@ var Message2 = class {
   get endDate() {
     return this.properties.scheduler.campaign.configuration.endDate;
   }
+  get startDate() {
+    return this.properties.startDate;
+  }
   setState(messageState) {
     this.state = messageState;
   }
   run() {
     this.setState("onWait" /* onWait */);
     const overdue = () => {
-      return Math.abs(new Date((/* @__PURE__ */ new Date()).getTime() + 6e4).getTime() - this.endDate.getTime()) / (1e3 * 60) >= 1;
+      const res = this.endDate.getTime() < new Date((/* @__PURE__ */ new Date()).getTime() + 1e3).getTime();
+      return res;
     };
     this.subscription = (0, import_rxjs3.timer)(this.properties.startDate).pipe((0, import_rxjs3.tap)(() => overdue() ? this.properties.scheduler.events.overdue() : void 0)).pipe(
       (0, import_rxjs3.tap)(() => this.setState("running" /* running */)),
@@ -2139,6 +2335,7 @@ var Message2 = class {
         }
       ),
       (0, import_rxjs3.catchError)((err, caught) => {
+        const error = err;
         this.setState("error" /* error */);
         return err;
       })
@@ -2211,7 +2408,13 @@ var SchedulerActions = class {
         index
       });
     });
-    this.scheduler.events.prepare();
+    this.scheduler.params.ResumeSchedule = this.scheduler.params.messagesScheduled.map((record) => {
+      return {
+        contact: record.properties.contact,
+        scheduledDate: record.startDate
+      };
+    });
+    this.scheduler.events.prepare(this.scheduler.params.ResumeSchedule);
     if (this.scheduler.params.messagesScheduled.length >= 1) {
       this.scheduler.events.ready();
       return true;
@@ -2329,6 +2532,7 @@ var CampaignScheduler = class extends import_events.EventEmitter {
     this.actions = new SchedulerActions(this);
     this.events = new SchedulerEventsEmitter(this);
     this.params = new SchedulerParams();
+    this.callbacks = options == null ? void 0 : options.schedulerEventCallbacks;
     this.initEvents();
   }
   init() {
@@ -2449,9 +2653,159 @@ var CampaignScheduler = class extends import_events.EventEmitter {
   startProcess(schedulerEventCallbacks) {
     var _a, _b, _c;
     const eventCallBacks = (_c = (_b = (_a = this.options) == null ? void 0 : _a.schedulerEventCallbacks) != null ? _b : schedulerEventCallbacks) != null ? _c : void 0;
+    this.callbacks = eventCallBacks;
     if (eventCallBacks)
       return this.actions.prepare(eventCallBacks);
     throw "Scheduller should have a Manager";
+  }
+  async waitProcessToFinish() {
+    await (0, import_rxjs3.firstValueFrom)((0, import_rxjs3.fromEvent)(this, "finished" /* finished */));
+  }
+};
+
+// src/database/Schemas/Campaign/Campaign.Schema.ts
+var import_mongoose6 = __toESM(require("mongoose"));
+var SendBehaviourSchema = new import_mongoose6.Schema({
+  latency: [Number],
+  unit: { type: String, enum: Object.values(TimeUnit) },
+  mode: { type: String, enum: Object.values(SendMode) }
+});
+var ConfigurationSchema = new import_mongoose6.Schema({
+  behaviour: SendBehaviourSchema,
+  startDate: Date,
+  endDate: Date,
+  campaignName: String,
+  executionRamp: Number
+});
+var ContactMessageSchema = new import_mongoose6.Schema({
+  id: String,
+  from: String,
+  to: String,
+  message: String,
+  imagefield: String,
+  messageMap: [{ key: String, value: String }],
+  status: { type: String, enum: Object.values(MessageStatus) }
+});
+var ImageCampaignSchema = new import_mongoose6.Schema({
+  name: String,
+  image: String,
+  link: String,
+  ext: String
+});
+var CampaignSchema = new import_mongoose6.Schema({
+  createDate: Date,
+  configuration: ConfigurationSchema,
+  contacts: [ContactMessageSchema],
+  images: [ImageCampaignSchema],
+  state: { type: String, enum: Object.values(ScheduleState) }
+});
+var CampaignModel = import_mongoose6.default.model("Campaign", CampaignSchema);
+
+// src/database/classes/Campaigns/classes/CampaignMongo.ts
+var CampaignMongo = class {
+  async activate({ id }, activate) {
+    return !!await CampaignModel.updateOne({ _id: id }, { state: !!activate ? "created" /* CREATED */ : "deactivated" /* DEACTIVATED */ });
+  }
+  async getById(id) {
+    return [await CampaignModel.findOne({ _id: id }).lean().exec()].map(({
+      _id,
+      createDate,
+      configuration,
+      contacts,
+      images,
+      state
+    }) => ({
+      id: _id.toHexString(),
+      createDate,
+      configuration,
+      contacts: contacts.map((contact) => ({ ...contact, id: _id.toHexString() })),
+      images,
+      state
+    }))[0];
+  }
+  async listAllActive() {
+    return (await CampaignModel.find({ "state": { "$ne": "deactivated" /* DEACTIVATED */ } })).map(({ _id, createDate, configuration, contacts, state }) => ({
+      id: _id.toHexString(),
+      state,
+      createDate,
+      name: configuration.campaignName,
+      contacts: contacts.length,
+      created: contacts.filter((contact) => contact.status === "created" /* CREATED */).length,
+      inProgress: contacts.filter((contact) => contact.status === "inprogress" /* INPROGRESS */).length,
+      error: contacts.filter((contact) => contact.status === "error" /* ERROR */).length,
+      completed: contacts.filter((contact) => contact.status === "completed" /* COMPLETED */).length
+    }));
+  }
+  async listAll() {
+    return (await CampaignModel.find({})).map(({ _id, createDate, configuration, contacts, state }) => ({
+      id: _id.toHexString(),
+      state,
+      createDate,
+      name: configuration.campaignName,
+      contacts: contacts.length,
+      created: contacts.filter((contact) => contact.status === "created" /* CREATED */).length,
+      inProgress: contacts.filter((contact) => contact.status === "inprogress" /* INPROGRESS */).length,
+      error: contacts.filter((contact) => contact.status === "error" /* ERROR */).length,
+      completed: contacts.filter((contact) => contact.status === "completed" /* COMPLETED */).length
+    }));
+  }
+  async create(campaign) {
+    return !!await CampaignModel.create(campaign);
+  }
+  async delete(campaign) {
+    return !!await CampaignModel.deleteOne({ _id: campaign.id });
+  }
+  async campaignInProgress({ id }) {
+    return !!await CampaignModel.updateOne({ _id: id }, { state: "inprogress" /* INPROGRESS */ });
+  }
+  async campaignCompleted({ id }) {
+    const campaign = await this.getById(id);
+    if (campaign.state === "overdue" /* OVERDUE */)
+      return !!await CampaignModel.updateOne({ _id: id }, { state: "completedOverdue" /* COMPLETEDOVERDUE */ });
+    else
+      return !!await CampaignModel.updateOne({ _id: id }, { state: "completed" /* COMPLETED */ });
+  }
+  async campaignStartProcess({ id }) {
+    return !!await CampaignModel.updateOne({ _id: id }, { state: "startProcess" /* STARTPROCESS */ });
+  }
+  async campaignOverdue({ id }) {
+    return !!await CampaignModel.updateOne({ _id: id }, { state: "overdue" /* OVERDUE */ });
+  }
+  // async campaignError({id}: Campaign): Promise<boolean> {
+  //     return !!(await CampaignModel.updateOne({_id:id},{state:ScheduleState.}))
+  // }
+  async messageInProgress({ id, contacts }, idMessage) {
+    const dbCampaign = await CampaignModel.findById(id);
+    if (!!!dbCampaign)
+      return false;
+    const contact = dbCampaign == null ? void 0 : dbCampaign.contacts.find((contact2) => contact2._id === idMessage);
+    if (!!!contact)
+      return false;
+    contact.status = "inprogress" /* INPROGRESS */;
+    return !!await (dbCampaign == null ? void 0 : dbCampaign.save());
+  }
+  async messageCompleted({ id }, idMessage) {
+    const dbCampaign = await CampaignModel.findById(id);
+    if (!!!dbCampaign)
+      return false;
+    return await !!dbCampaign.updateOne({
+      $set: { "contacts.$[x].status": "completed" /* COMPLETED */ }
+    }, {
+      arrayFilters: [{
+        "x._id": idMessage
+        // new mongoose.Types.ObjectId(idMessage) 
+      }]
+    });
+  }
+  async messageError({ id }, idMessage) {
+    const dbCampaign = await CampaignModel.findById(id);
+    if (!!!dbCampaign)
+      return false;
+    const contact = dbCampaign == null ? void 0 : dbCampaign.contacts.find((contact2) => contact2._id === idMessage);
+    if (!!!contact)
+      return false;
+    contact.status = "error" /* ERROR */;
+    return !!await (dbCampaign == null ? void 0 : dbCampaign.save());
   }
 };
 
@@ -2459,18 +2813,68 @@ var CampaignScheduler = class extends import_events.EventEmitter {
 var SchedulerEventsManager = class {
   constructor(params) {
     this.params = params;
+    this.start = async (scheduler) => {
+      console.log("start");
+      await this.setCampaignStartProcess();
+    };
+    this.prepare = async (resume) => {
+      console.log("prepare");
+      console.table(resume.map((record) => `${record.contact.to} || ${record.scheduledDate.toDateString()} - ${record.scheduledDate.toTimeString()}  `));
+    };
+    this.ready = async () => {
+      console.log("ready");
+      await this.setCampaignInProgress();
+    };
+    this.pause = async () => {
+      console.log("pause");
+    };
+    this.dispatch = async () => {
+      console.log("dispatch");
+    };
+    this.finish = async () => {
+      console.log("finish");
+      await this.setCampaignCompleted();
+    };
+    this.overdue = async () => {
+      console.log("overdue");
+      await this.setCampaignOverdue();
+    };
     this.sendMessageAction = async (contactMessage) => {
+      await this.setMessageInProgress(contactMessage);
       const messageEventsController = new MessageController(contactMessage, this.params);
       await messageEventsController.sendMessage();
     };
     this.sendMessageError = async (err, contactMessage) => {
       const { from: from5, imagefield, message, messageMap, status, to } = contactMessage;
       console.log(`${from5} ${to} ${message} --- Error:${typeof err === "string" ? err : err.message}`);
+      await this.setMessageError(contactMessage);
     };
     this.sendMessageEnd = async (contactMessage) => {
       const { from: from5, imagefield, message, messageMap, status, to } = contactMessage;
       console.log(`${from5} ${to} ${message} --- Mensaje Enviado`);
+      await this.setMessageCompleted(contactMessage);
     };
+  }
+  async setCampaignStartProcess() {
+    await this.params.campaignData.campaignStartProcess(this.params.campaign);
+  }
+  async setCampaignOverdue() {
+    await this.params.campaignData.campaignOverdue(this.params.campaign);
+  }
+  async setCampaignInProgress() {
+    await this.params.campaignData.campaignInProgress(this.params.campaign);
+  }
+  async setCampaignCompleted() {
+    await this.params.campaignData.campaignCompleted(this.params.campaign);
+  }
+  async setMessageError({ _id }) {
+    return await this.params.campaignData.messageError(this.params.campaign, _id);
+  }
+  async setMessageInProgress({ _id }) {
+    return await this.params.campaignData.messageInProgress(this.params.campaign, _id);
+  }
+  async setMessageCompleted({ _id }) {
+    return await this.params.campaignData.messageCompleted(this.params.campaign, _id);
   }
 };
 var MessageController = class {
@@ -2479,44 +2883,50 @@ var MessageController = class {
     this.params = params;
     this.message = "";
     this.message = contact.message;
-    this.prepareMessage();
+  }
+  selectClient(clients) {
+    return clients[Math.floor(Math.random() * clients.length)];
   }
   prepareMessage() {
-    this.contact.messageMap.reduce(({ key, value }) => {
-      this.message = this.message.replace(`[${key}]`, value);
-      return { key, value };
+    this.contact.messageMap.forEach((messageMap) => {
+      this.message = this.message.replace(`[${messageMap.key}]`, messageMap.value);
     });
   }
   getMessage() {
     return this.message;
   }
   getImage() {
-    const imageCampaign = this.params.campaign.images.filter((image) => image.name == this.contact.imagefield);
+    const imageCampaign = this.params.campaign.images.filter((image) => image.name == this.contact.imagefield.replace("{", "").replace("}", ""));
     return {
       data: !!imageCampaign ? imageCampaign[0].image : "",
       mimetype: this.getImageExt()
     };
   }
   getImageExt() {
-    const imageCampaign = this.params.campaign.images.filter((image) => image.name == this.contact.imagefield);
+    const imageCampaign = this.params.campaign.images.filter((image) => image.name == this.contact.imagefield.replace("{", "").replace("}", ""));
     return !!imageCampaign ? imageCampaign[0].ext : "";
   }
   async sendMessage() {
-    const { from: from5, imagefield, to } = this.contact;
-    if (!!this.params.client) {
-      !!imagefield ? this.sendImage() : this.sendText();
+    const { from: from5, imagefield, to, message } = this.contact;
+    let clientSelected;
+    if (["", "-", ".", ","].some((x) => x === from5.trim()) || from5.length == 0) {
+      clientSelected = this.selectClient(this.params.clients);
+    }
+    if (!!!clientSelected)
+      clientSelected = this.params.clients.find((x) => x.getPhone() === from5);
+    if (!!clientSelected) {
+      console.log(clientSelected.getPhone(), to, message);
+      return true;
     } else
       throw `Bot no encontrado ${from5} ${to} ${this.getMessage()}`;
   }
-  async sendImage() {
-    var _a;
+  async sendImage(client) {
     const { to } = this.contact;
-    return this.saveOnDb(await ((_a = this.params.client) == null ? void 0 : _a.sendMessage(to, this.getImage(), this.getMessage())));
+    return this.saveOnDb(await client.sendMessage(to, this.getImage(), this.getMessage()));
   }
-  async sendText() {
-    var _a;
+  async sendText(client) {
     const { to } = this.contact;
-    (_a = this.params.client) == null ? void 0 : _a.sendMessage(to, this.getMessage());
+    client.sendMessage(to, this.getMessage());
   }
   async saveOnDb(message) {
     const messageDB = [message].map(({
@@ -2546,22 +2956,27 @@ var MessageController = class {
   }
 };
 var CampaignManager = class {
-  constructor() {
+  constructor(schedule) {
+    this.schedule = schedule;
   }
   async createCampaingFromFile(excelPath) {
     const creator = new CampaignCreator();
     const campaign = await creator.createCampaing(fs4.readFileSync(excelPath)).catch((err) => console.log(err));
-    if (!!!campaign)
-      return false;
-    const schedule = this.scheduleCampaing(campaign, PhonesInfo.selectAvailablePhonesClients([]));
-    return !!schedule && CampaignsInfo.loadCampaing(campaign) && CampaignsInfo.loadSchedule(schedule);
+    return !!campaign && CampaignsInfo.loadCampaing(campaign);
   }
-  selectClient(clients) {
-    return clients[Math.floor(Math.random() * clients.length)];
+  scheduleCampaign(campaign) {
+    const schedule = this.prepareCampaign(campaign, PhonesInfo.selectAvailablePhonesClients([]));
+    this.schedule = schedule;
+    return !!schedule;
   }
-  scheduleCampaing(campaign, clients) {
-    const schedulerManager = new SchedulerEventsManager({ campaign, messageData: new MessageMongo(), client: this.selectClient(clients) });
-    const scheduler = new CampaignScheduler(campaign, { runOnReady: false, schedulerEventCallbacks: schedulerManager });
+  async startProcess() {
+    var _a, _b;
+    (_a = this.schedule) == null ? void 0 : _a.startProcess();
+    await ((_b = this.schedule) == null ? void 0 : _b.waitProcessToFinish());
+  }
+  prepareCampaign(campaign, clients) {
+    const schedulerManager = new SchedulerEventsManager({ campaign, campaignData: new CampaignMongo(), messageData: new MessageMongo(), clients });
+    const scheduler = new CampaignScheduler(campaign, { runOnReady: true, schedulerEventCallbacks: schedulerManager });
     return scheduler;
   }
 };
@@ -2612,6 +3027,10 @@ var _CampaignsInfo = class _CampaignsInfo {
       Remitentes: recieverPhones
     });
   }
+  static async getSavedCampaign(id) {
+    const campaignMongo = new CampaignMongo();
+    return await campaignMongo.getById(id);
+  }
   static getLoadedCampaign(selection) {
     var _a;
     return (_a = Array.from(this.Campaings.entries()).find((entry) => {
@@ -2620,8 +3039,22 @@ var _CampaignsInfo = class _CampaignsInfo {
       return selection === `${name} => id: ${(_a2 = campaing.id) != null ? _a2 : "sin salvar"} || status: ${campaing.state} ||  mensajes enviados: ${(_b = campaing.contacts.filter((message) => message.status === "completed" /* COMPLETED */).length) != null ? _b : 0}/${campaing.contacts.length} || mensajes error envio: ${(_c = campaing.contacts.filter((message) => message.status === "error" /* ERROR */).length) != null ? _c : 0}`;
     })) == null ? void 0 : _a[1];
   }
+  static async listSavedActiveCampaigns() {
+    const campaignMongo = new CampaignMongo();
+    return (await campaignMongo.listAllActive()).map(({
+      completed,
+      contacts,
+      createDate,
+      created,
+      error,
+      id,
+      inProgress,
+      name,
+      state
+    }) => ({ selection: `${createDate.getTime()}-${name} => id: ${id} || status: ${state}`, id }));
+  }
   static listLoadedCampaings() {
-    return Array.from(this.Campaings.entries()).map((entry) => {
+    return Array.from(_CampaignsInfo.Campaings.entries()).map((entry) => {
       var _a, _b, _c;
       const [name, campaing] = entry;
       return `${name} => id: ${(_a = campaing.id) != null ? _a : "sin salvar"} || status: ${campaing.state} ||  mensajes enviados: ${(_b = campaing.contacts.filter((message) => message.status === "completed" /* COMPLETED */).length) != null ? _b : 0}/${campaing.contacts.length} || mensajes error envio: ${(_c = campaing.contacts.filter((message) => message.status === "error" /* ERROR */).length) != null ? _c : 0}`;
@@ -2645,7 +3078,7 @@ var AddCampaign = class {
     this.ListOptions = (options) => ({
       type: "list",
       name: "action",
-      message: "Selecciona una opcion",
+      message: "",
       choices: [
         // 'Crear Campaña',
         // 'Visualizar',
@@ -2704,7 +3137,7 @@ var CampaginParts = class {
     this.ListOptions = (options) => ({
       type: "list",
       name: "action",
-      message: "Selecciona una opcion",
+      message: "",
       choices: [
         "Contactos",
         "Imagenes",
@@ -2758,12 +3191,15 @@ var LoadedCampaigns = class {
       const campaignSelected = CampaignsInfo.getLoadedCampaign(selectCampaing.answer);
       const actionWithCampaign = await CLIUtils.createAutoComplete({
         name: "action",
-        message: `Que deseas hacer con la campa\xF1a: 
-        ${campaignSelected.createDate.getTime()}-${campaignSelected.configuration.campaignName}`,
+        message: `Que deseas hacer con la campa\xF1a: ${campaignSelected.createDate.getTime()}-${campaignSelected.configuration.campaignName}`,
         autocomplete: ["Salvar", "Ver Detalles", "atras"]
       });
       switch (actionWithCampaign.answer) {
         case "Salvar":
+          const campaignMongo = new CampaignMongo();
+          if (!!await campaignMongo.create(campaignSelected).catch((err) => console.log(err)))
+            console.log("Campa\xF1a ha sido Guardada");
+          return CLIProgram.setNextCommand(this.back);
           break;
         case "Ver Detalles":
           const campaginParts = new CampaginParts(this);
@@ -2779,7 +3215,70 @@ var LoadedCampaigns = class {
     this.ListOptions = (options) => ({
       type: "list",
       name: "action",
-      message: "Selecciona una opcion",
+      message: "",
+      choices: [
+        // 'Crear Campaña',
+        // 'Visualizar',
+        // 'atras'
+      ]
+    });
+    this.back = back;
+  }
+};
+
+// src/cli/Commands/Campaigns/SavedCampaigns.ts
+var SavedCampaigns = class {
+  constructor(back) {
+    this.prompt = false;
+    this.manageOptions = async (options) => {
+      const action = options == null ? void 0 : options.action;
+      const savedCampaigns = await CampaignsInfo.listSavedActiveCampaigns();
+      const selections = savedCampaigns.map((selection) => selection.selection);
+      const selectCampaing = await CLIUtils.createAutoComplete({ name: "campaign", message: "Selecciona Campa\xF1a", autocomplete: Array.prototype.concat(selections, "atras") });
+      if (selectCampaing.answer === "atras")
+        return CLIProgram.setNextCommand(this.back);
+      const campaignSelected = await CampaignsInfo.getSavedCampaign(savedCampaigns.find((selection) => selection.selection === selectCampaing.answer).id);
+      const actionWithCampaign = await CLIUtils.createAutoComplete({
+        name: "action",
+        message: `Que deseas hacer con la campa\xF1a: ${campaignSelected.createDate.getTime()}-${campaignSelected.configuration.campaignName}`,
+        autocomplete: ["Correr", "Desactivar", "Ver Detalles", "Borrar", "atras"]
+      });
+      switch (actionWithCampaign.answer) {
+        case "Desactivar":
+          const deactivateCampaign = await CLIUtils.YesNoDialog({ name: "delete", message: "\xBFEstas seguro que deseas desactivar la campa\xF1a?" });
+          if (deactivateCampaign.answer) {
+            await new CampaignMongo().activate(campaignSelected, false) && console.log("campa\xF1a desactivada");
+          }
+          return CLIProgram.setNextCommand(this.back);
+          break;
+        case "Borrar":
+          const deleteCampaign = await CLIUtils.YesNoDialog({ name: "delete", message: "\xBFEstas seguro que deseas borrar la campa\xF1a?" });
+          if (deleteCampaign.answer) {
+            await new CampaignMongo().delete(campaignSelected) && console.log("campa\xF1a borrada");
+          }
+          return CLIProgram.setNextCommand(this.back);
+          break;
+        case "Correr":
+          const manager = new CampaignManager();
+          manager.scheduleCampaign(campaignSelected);
+          await manager.startProcess();
+          return CLIProgram.setNextCommand(this.back);
+          break;
+        case "Ver Detalles":
+          const campaginParts = new CampaginParts(this);
+          campaginParts.passInOptions = { action: "campaign", extraParams: campaignSelected };
+          return CLIProgram.setNextCommand(campaginParts);
+          break;
+        case "atras":
+          return CLIProgram.setNextCommand(this.back);
+          break;
+      }
+      return CLIProgram.setNextCommand(this.back);
+    };
+    this.ListOptions = (options) => ({
+      type: "list",
+      name: "action",
+      message: "",
       choices: [
         // 'Crear Campaña',
         // 'Visualizar',
@@ -2801,6 +3300,8 @@ var VisualizeCampaign = class {
           return CLIProgram.setNextCommand(loadedCampaigns);
           break;
         case "Ver Campa\xF1as Salvadas":
+          const savedCampaigns = new SavedCampaigns(this);
+          return CLIProgram.setNextCommand(savedCampaigns);
           break;
         case "atras":
           return CLIProgram.setNextCommand(this.back);
@@ -2811,7 +3312,7 @@ var VisualizeCampaign = class {
     this.ListOptions = (options) => ({
       type: "list",
       name: "action",
-      message: "Selecciona una opcion",
+      message: "",
       choices: [
         "Ver Campa\xF1as Cargadas",
         "Ver Campa\xF1as Salvadas",
@@ -2845,7 +3346,7 @@ var CampaignCLI = class {
     this.ListOptions = (options) => ({
       type: "list",
       name: "action",
-      message: "Selecciona una opcion",
+      message: "",
       choices: [
         "Crear Campa\xF1a",
         "Visualizar",
@@ -2876,7 +3377,7 @@ var _CLIProgram = class _CLIProgram {
           break;
         case "Mensajes":
           const messages = new Messages(this);
-          _CLIProgram.setNextCommand(messages);
+          return _CLIProgram.setNextCommand(messages);
           break;
         case "Salir":
           process.exit(0);
@@ -2886,13 +3387,18 @@ var _CLIProgram = class _CLIProgram {
     };
     _CLIProgram.baseCommand = this;
   }
+  static closeCurrentPrompt() {
+    !!_CLIProgram.currentPrompt && _CLIProgram.currentPrompt.ui.close();
+  }
   static setNextCommand(command, options) {
+    !!!conf().behaviour.historyVerbose && console.clear();
     command.passInOptions = options != null ? options : command.passInOptions;
     _CLIProgram.nextCommand = command;
+    _CLIProgram.nextOptions = options;
     let prompt = true;
     if (typeof command.prompt !== "undefined")
       prompt = command.prompt;
-    _CLIProgram.showMenu(_CLIProgram.nextCommand.ListOptions(options), prompt);
+    _CLIProgram.showMenu(_CLIProgram.nextCommand.ListOptions(_CLIProgram.nextOptions), prompt);
   }
   static backToBegining() {
     _CLIProgram.setNextCommand(_CLIProgram.baseCommand);
@@ -2901,7 +3407,7 @@ var _CLIProgram = class _CLIProgram {
     return {
       type: "list",
       name: "action",
-      message: "Selecciona una opcion",
+      message: "",
       choices: ["Telefonos", "Afiliados", "Campa\xF1as", "Mensajes", "Salir"]
     };
   }
@@ -2910,16 +3416,198 @@ _CLIProgram.menuNext = new import_rxjs4.Subject();
 _CLIProgram.showMenu = (options, prompt) => {
   if (!!!prompt)
     return _CLIProgram.menuNext.next({});
-  import_inquirer2.default.prompt(options).then((respuestas) => {
+  _CLIProgram.currentPrompt = import_inquirer.default.prompt(options);
+  _CLIProgram.currentPrompt.then((respuestas) => {
     _CLIProgram.menuNext.next(respuestas);
   });
 };
 var CLIProgram = _CLIProgram;
 
 // src/Main.ts
-var import_mongoose6 = __toESM(require("mongoose"));
+var import_mongoose7 = __toESM(require("mongoose"));
+
+// src/ErrorHandling/classes/ErrorHandling.ts
+var import_rxjs5 = require("rxjs");
+var ErrorHandling = class _ErrorHandling {
+  constructor() {
+    this.WSBLOCK = new import_rxjs5.Subject();
+    this.UnexpectedError = new import_rxjs5.Subject();
+    // fromEvent<{ err: Error, origin: string }>(process, 'uncaughtException')
+    this.UnexpectedBreaker = new import_rxjs5.Subject();
+    this.errorCounter = 0;
+    this.errorConsecutiveLimit = 3;
+    this.errorConsecutiveIntervalSeconds = 10;
+    this.processUnhandledEventDeclaration();
+    this.handleUnexpected();
+    this.handleUnexpectedBreaker();
+  }
+  static get ErrorHandlingInstance() {
+    if (!!!_ErrorHandling.instance)
+      _ErrorHandling.instance = new _ErrorHandling();
+    return _ErrorHandling.instance;
+  }
+  emitWSAlert(client, message, state) {
+    return this.WSBLOCK.next({ client, message, waState: state });
+  }
+  processUnhandledEventDeclaration() {
+    process.on("uncaughtException", (err, origin) => {
+      this.UnexpectedError.next({ err, origin });
+    });
+  }
+  handleWsAlert() {
+    this.WSBLOCK.subscribe();
+  }
+  handleUnexpected() {
+    this.UnexpectedError.pipe(
+      (0, import_rxjs5.takeUntil)(this.UnexpectedBreaker)
+    ).subscribe({
+      next: (val) => {
+        console.log(val.err.message);
+      },
+      complete: () => {
+        console.error("Major.... im burning up!!!! ");
+        process.exit(1);
+      }
+    });
+  }
+  handleUnexpectedBreaker() {
+    this.UnexpectedError.subscribe({
+      next: () => {
+        if (!!!this.lastError) {
+          this.lastError = /* @__PURE__ */ new Date();
+          this.errorCounter++;
+        } else if (Math.floor(((/* @__PURE__ */ new Date()).getTime() - this.lastError.getTime()) / 1e3) < this.errorConsecutiveIntervalSeconds)
+          this.errorCounter++;
+        else
+          this.errorCounter = 1;
+        this.lastError = /* @__PURE__ */ new Date();
+        console.log(this.errorCounter);
+        if (this.errorConsecutiveLimit < this.errorCounter)
+          return this.UnexpectedBreaker.next(true);
+      }
+    });
+  }
+};
+
+// src/Logging/classes/ConsoleStyles.ts
+var BasicLogStyle = class {
+  constructor() {
+    this.bgColor = "#000";
+    this.underline = false;
+    this.bold = true;
+    this.fgColor = "#FFFFFF";
+  }
+};
+var BasicLogErrStyle = class {
+  constructor() {
+    this.bgColor = "#000";
+    this.underline = false;
+    this.bold = true;
+    this.fgColor = "#FFFFFF";
+  }
+};
+var BoldLogBG = class {
+  constructor() {
+    this.bgColor = "#FFF";
+    this.underline = false;
+    this.bold = true;
+    this.fgColor = "#000";
+  }
+};
+var BoldErrBG = class {
+  constructor() {
+    this.bgColor = "#EBC3C3";
+    this.underline = false;
+    this.bold = true;
+    this.fgColor = "#E9A783";
+  }
+};
+var BasicUnderline = class {
+  constructor() {
+    this.bgColor = "#000";
+    this.underline = true;
+    this.bold = true;
+    this.fgColor = "#FFFFFF";
+  }
+};
+var BasicDashed = class {
+  constructor() {
+    this.bgColor = "#000";
+    this.underline = false;
+    this.bold = true;
+    this.fgColor = "#E9A783";
+    this.dashedBox = true;
+  }
+};
+
+// src/Logging/classes/ConsoleLogger.ts
+var ConsoleLogger = class _ConsoleLogger {
+  constructor() {
+    this.LogStyle = new BasicLogStyle();
+    this.logErrStyle = new BasicLogErrStyle();
+    this.processColor = (message, { bgColor, bold, underline, fgColor }) => {
+      let format = this.chalk.hex(fgColor).bgHex(bgColor != null ? bgColor : "#FFFFFF");
+      return underline ? format.underline(message) : bold ? format.bold(message) : format(message);
+    };
+    this.printDashedLine = (message, style) => {
+      console.log(this.processColor(new Array(message.length).fill("-").join(""), style));
+    };
+    this.log = (message, options) => {
+      const logOptions = options != null ? options : this.LogStyle;
+      logOptions.dashedBox && this.printDashedLine(message, logOptions);
+      console.log(this.processColor(message, logOptions));
+      logOptions.dashedBox && this.printDashedLine(message, logOptions);
+    };
+    this.logErr = (message, options) => {
+      const logOptions = options != null ? options : this.logErrStyle;
+      console.log(this.processColor(message, logOptions));
+    };
+    this.logInfo = () => {
+    };
+    this.initLogger();
+  }
+  static get logger() {
+    if (!!!_ConsoleLogger.instance) {
+      _ConsoleLogger.instance = new _ConsoleLogger();
+    }
+    return _ConsoleLogger.instance;
+  }
+  initLogger() {
+    this.chalk = require("chalk");
+  }
+  getLogByType(style) {
+    switch (style) {
+      case 1 /* err */:
+        return this.logErrStyle;
+      case 0 /* log */:
+        return this.LogStyle;
+    }
+  }
+  setLogStyle(type, { bgColor, fgColor, bold, underline, dashedBox }) {
+    this.setStyle(type, bgColor, fgColor, bold, underline, dashedBox);
+  }
+  setStyle(logType, bgColor, fgColor, bold, underline, dashedBox) {
+    const logSelected = this.getLogByType(logType);
+    if (!!bgColor)
+      logSelected.bgColor = bgColor;
+    if (!!fgColor)
+      logSelected.fgColor = fgColor;
+    if (typeof bold !== "undefined")
+      logSelected.bold = bold;
+    if (typeof underline !== "undefined")
+      logSelected.underline = underline;
+    if (typeof underline !== "undefined")
+      logSelected.dashedBox = dashedBox;
+  }
+};
+
+// src/Main.ts
+var init_ErrorHandling = async () => {
+  const err = ErrorHandling.ErrorHandlingInstance;
+  return err;
+};
 var init_moongoose = async () => {
-  return await import_mongoose6.default.connect(process.env.MONGOCONNECTIONSTRING).then(() => {
+  return await import_mongoose7.default.connect(conf().Mongo.connectionString).then(() => {
     console.log("Conexi\xF3n exitosa a la base de datos");
   }).catch((error) => {
     console.error("Error de conexi\xF3n a la base de datos:", error);
@@ -2927,7 +3615,18 @@ var init_moongoose = async () => {
 };
 var main = async () => {
   await init_moongoose();
+  const errorHandler = await init_ErrorHandling();
   console.clear();
+  ConsoleLogger.logger.log("asd");
+  ConsoleLogger.logger.setLogStyle(0 /* log */, new BoldLogBG());
+  ConsoleLogger.logger.log("Este es un ejemplo de Log");
+  ConsoleLogger.logger.setLogStyle(0 /* log */, new BasicUnderline());
+  ConsoleLogger.logger.log("Este es un ejemplo de Log");
+  ConsoleLogger.logger.setLogStyle(0 /* log */, new BasicDashed());
+  ConsoleLogger.logger.log("Este es un ejemplo de Log dashed");
+  ConsoleLogger.logger.setLogStyle(1 /* err */, new BoldErrBG());
+  ConsoleLogger.logger.logErr("Este es un ejemplo de Error");
+  process.exit(0);
   const cli = new CLIProgram();
   CLIProgram.setNextCommand(cli);
   CLIProgram.menuNext.subscribe({

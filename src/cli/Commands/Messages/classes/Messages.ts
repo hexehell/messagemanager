@@ -48,7 +48,7 @@ export class Messages implements CLICommand {
     ListOptions = (options?: CliAction | undefined): QuestionCollection<any> => ({
         type: 'list',
         name: 'action',
-        message: 'Selecciona una opcion',
+        message: '',
         choices:
             [
                 'Enviar Mensaje simple',

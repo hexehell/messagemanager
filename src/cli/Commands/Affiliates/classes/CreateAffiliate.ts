@@ -6,11 +6,12 @@ import { SearchAffiliate } from "./Search";
 import Table = require('cli-table');
 import { AffiliateMongo } from "@CampaignCreator/database/classes/Affiliates/classes/AfiliateMongo";
 import { Affiliate } from "@CampaignCreator/database/classes/Affiliates/interfaces/Affiliate";
-import { CLIUtils, FormPromptChoice, FormPromptChoiceAutoComplete, FormPromptChoiceDatePicker, FormPromptChoiceYesNo, PromptAnswer } from "@CampaignCreator/cli/utils/CliUtils";
+import { CLIUtils, PromptInput, FormPromptChoiceAutoComplete, FormPromptChoiceDatePicker, FormPromptChoiceYesNo, PromptAnswer } from "@CampaignCreator/cli/utils/CliUtils";
 import { SponsorMongo } from "@CampaignCreator/database/classes/Sponsors/classes/SponsorMongo";
 import { SuburbMongo } from "@CampaignCreator/database/classes/Suburb/classes/SuburbMongo";
 import { CLIFormBuilder } from "@CampaignCreator/cli/utils/CLIFormBuilder";
 import { createSpinner } from "nanospinner";
+import { conf } from "@CampaignCreator/conf/configuration";
 
 
 
@@ -34,7 +35,7 @@ export class CreateAffiliate implements CLICommand {
         const sponsors = await dbSponsors.listAllByName()
         const suburbs = await dbSuburbs.listAllByName()
 
-        const choices: Map<string, FormPromptChoice | FormPromptChoiceAutoComplete | FormPromptChoiceDatePicker | FormPromptChoiceYesNo> = new Map()
+        const choices: Map<string, PromptInput | FormPromptChoiceAutoComplete | FormPromptChoiceDatePicker | FormPromptChoiceYesNo> = new Map()
 
         choices.set('name', { name: 'name', message: 'Escribe el nombre del Afiliado', initial: '' })
         choices.set('phone', { name: 'phone', message: 'Escribe el telefono del Afiliado', initial: '' })
@@ -94,6 +95,8 @@ export class CreateAffiliate implements CLICommand {
 
     ListOptions = () => {
 
+
+       !!!conf().behaviour.historyVerbose && console.clear()
 
         const optionsList: QuestionCollection<any> = {
         };

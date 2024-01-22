@@ -8,6 +8,7 @@ import { Messages } from '../Commands/Messages/classes/Messages';
 import { CLIPhones } from '../Commands/Phones/classes/CLIPhones';
 import { AffiliatesMenu } from '../Commands/Affiliates/classes/AffiliatesMenu';
 import { CampaignCLI } from '../Commands/Campaigns/Campaigns';
+import {conf} from  '@CampaignCreator/conf/configuration'
 
 export class CLIProgram implements CLICommand {
 
@@ -47,6 +48,8 @@ export class CLIProgram implements CLICommand {
 
   static setNextCommand(command: CLICommand, options?: CliAction) {
 
+    !!!conf().behaviour.historyVerbose && console.clear()
+
      command.passInOptions = options?? command.passInOptions
 
     CLIProgram.nextCommand = command
@@ -75,7 +78,8 @@ export class CLIProgram implements CLICommand {
 
       case 'Telefonos':
 
-        const phones = new CLIPhones(this)
+        const phones = 
+        new CLIPhones(this)
 
         return CLIProgram.setNextCommand(phones)
 
@@ -131,7 +135,7 @@ export class CLIProgram implements CLICommand {
     return {
       type: 'list',
       name: 'action',
-      message: 'Selecciona una opcion',
+      message: '',
       choices: ['Telefonos', 'Afiliados', 'Campañas', 'Mensajes', 'Salir'],
     };
 

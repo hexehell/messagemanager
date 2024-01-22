@@ -71,11 +71,12 @@ export class AffiliatesMenu implements CLICommand {
 
     ListOptions = () => {
 
+        
 
         const optionsList: QuestionCollection<any> = {
             type: 'list',
             name: 'action',
-            message: 'Selecciona una opcion',
+            message: '',
             choices:
                 [
                     'Listar'

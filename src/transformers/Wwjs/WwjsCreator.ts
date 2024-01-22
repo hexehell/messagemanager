@@ -26,6 +26,8 @@ import { BotMongo } from '@CampaignCreator/database/classes/bot/classes/BotMongo
 import { Bot } from '@CampaignCreator/database/classes/bot/interfaces/Bot';
 import { PhonesInfo } from '../PhonesInfo';
 import { MessageFactory } from '../Factories/interfaces/Message.factory';
+import {conf} from '@CampaignCreator/conf/configuration'
+
 
 export class WwjsCreator extends PhoneCreator {
 
@@ -125,7 +127,7 @@ export class WwjsCreator extends PhoneCreator {
         this.saved$ = fromEvent(clientTransformed, ClientEvents.saved)
         this.saveError$ = fromEvent(clientTransformed, ClientEvents.loadError)
 
-        this.message$ =  fromEvent(clientTransformed,ClientEvents.message)
+        this.message$ = fromEvent(clientTransformed, ClientEvents.message)
 
 
 
@@ -133,7 +135,12 @@ export class WwjsCreator extends PhoneCreator {
 
         const savedAndClosed$ = this.saved$.pipe(concatMap((client) => of(client ? this.spiner?.success({ text: 'telefono agregado' }) : '')), concatMap(() => of('')))
 
-        const return$ = race(savedAndClosed$, this.saveError$)
+        const return$ = race(savedAndClosed$, this.saveError$).pipe(first()).pipe(timeout(timeoutInSeconds * 1000), catchError(err => {
+
+            clientTransformed.disconnect().catch()
+
+            return of('')
+        }))
 
         const subsqr = qr$.subscribe((qr) => this.qr(qr as string))
         this.ready$.subscribe((client) => this.ready(client as ClientWwjs))
@@ -143,12 +150,7 @@ export class WwjsCreator extends PhoneCreator {
         clientTransformed.initialize()
 
 
-        return firstValueFrom(return$.pipe(first()).pipe(timeout(timeoutInSeconds * 1000), catchError(err => {
-
-            clientTransformed.disconnect().catch()
-
-            return of('')
-        })))
+        return firstValueFrom(return$)
 
 
 
@@ -157,7 +159,7 @@ export class WwjsCreator extends PhoneCreator {
     save(client: ClientFactory) {
 
 
-        const pathToSave = process.env.PATHTOPHONES! + `wwjs/session-${client.getPhone()}`
+        const pathToSave = conf().Paths.toPhones + `wwjs/session-${client.getPhone()}`
 
         try {
 

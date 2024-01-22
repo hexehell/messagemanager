@@ -9,7 +9,6 @@ import { ClientEvents, ClientFactory } from "./Factories/interfaces/Client"
 import { Spinner, createSpinner } from 'nanospinner'
 import { TurnOnCliAction } from '@CampaignCreator/cli/Commands/Phones/classes/TurnOnPhone'
 import { PhoneTypes } from './PhonesInfo'
-import { CaptureInput } from '@CampaignCreator/cli/Commands/utils/CaptureInput';
 import { Console } from 'console';
 import { Bot } from '@CampaignCreator/database/classes/bot/interfaces/Bot';
 import { MessageFactory } from './Factories/interfaces/Message.factory';

@@ -5,6 +5,7 @@ import { CLIUtils, FormPromptChoiceAutoComplete } from "@CampaignCreator/cli/uti
 import { PhoneCreator } from "@CampaignCreator/transformers/PhoneCreator";
 import { PhonesInfo } from "@CampaignCreator/transformers/PhonesInfo";
 import { QuestionCollection } from "inquirer";
+import  { conf} from '@CampaignCreator/conf/configuration'
 
 export class ListAvailablePhones implements CLICommand{
     prompt?: boolean | undefined = false;
@@ -29,6 +30,8 @@ export class ListAvailablePhones implements CLICommand{
     
     ListOptions = () => {
 
+
+       !!!conf().behaviour.historyVerbose && console.clear()
 
         const optionsList: QuestionCollection<any> = {
         };

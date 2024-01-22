@@ -5,6 +5,7 @@ import { CLICommand } from "@CampaignCreator/cli/interfaces/Command.Factory";
 import { QuestionCollection } from "inquirer";
 import { createSpinner } from "nanospinner";
 import { CLIUtils, FormPromptChoiceAutoComplete } from "@CampaignCreator/cli/utils/CliUtils";
+import { ShowAffiliate } from "./ShowAffiliate";
 
 
 
@@ -84,7 +85,7 @@ export class SearchAffiliate implements CLICommand {
     let selected = listAff.filter(x => x.name === displaySelected)[0]
 
 
-    if (displayAff.filter((x: string) => x.toLocaleLowerCase() === displaySelected.toLocaleLowerCase()).length) {
+    if (displayAff.filter((x: string) => x.toLocaleLowerCase() === displaySelected.toLocaleLowerCase()).length>1) {
 
       console.log('existen multiples opciones para este nombre. Especifique')
 
@@ -145,10 +146,10 @@ export class SearchAffiliate implements CLICommand {
     const displaySelected: string = (await CLIUtils.createAutoComplete({name:'phone',autocomplete:displayAff, message:'Selecciona el telefono'} as FormPromptChoiceAutoComplete)).answer.toString()
 
 
-    let selected = listAff.filter(x => x.name === displaySelected)[0]
+    let selected = listAff.filter(x => x.phone === displaySelected)[0]
 
 
-    if (displayAff.filter((x: string) => x.toLocaleLowerCase() === displaySelected.toLocaleLowerCase()).length) {
+    if (displayAff.filter((x: string) => x.toLocaleLowerCase() === displaySelected.toLocaleLowerCase()).length>1) {
 
       console.log('existen multiples opciones para este telefono. Especifique')
 
@@ -156,10 +157,21 @@ export class SearchAffiliate implements CLICommand {
 
     }
 
+    if(!!selected){
+
+
+      const showAff = new ShowAffiliate(this)
+
+      showAff.passInOptions = {action:'show',extraParams:selected} as CliAction
+
+      showAff.prompt = false
+
+      return CLIProgram.setNextCommand(showAff)
+    }
 
 
 
-    return CLIProgram.setNextCommand(this.selectedCommand!, { extraParams: selected } as CliAction)
+    return CLIProgram.setNextCommand(this.back!)
 
   }
 
@@ -168,6 +180,7 @@ export class SearchAffiliate implements CLICommand {
 
   ListOptions = () => {
 
+    
 
     const optionsList: QuestionCollection<any> = [{
       type: 'list',

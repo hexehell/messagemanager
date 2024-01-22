@@ -7,31 +7,58 @@ import { QuestionCollection } from 'inquirer';
 import { CLIProgram } from '@CampaignCreator/cli/classes/CLIProgram';
 import { PhonesInfo } from '@CampaignCreator/transformers/PhonesInfo';
 import { PhoneAvailabe } from '@CampaignCreator/transformers/PhoneCreator';
+import { CLIUtils } from '@CampaignCreator/cli/utils/CliUtils';
 
 export class ListPhones implements CLICommand {
 
-    constructor(back:CLICommand) {
+    constructor(back: CLICommand) {
 
         this.back = back
 
     }
     back: CLICommand | undefined;
 
-    manageOptions = (options: CliAction) => {
+    manageOptions = async (options: CliAction) => {
 
-            PhonesInfo.getAvailablePhonesByType(options.action as string).map(({bot}:PhoneAvailabe)=>bot.phone).forEach(phone=>console.log(phone))
+        // PhonesInfo.getAvailablePhonesByType(options.action as string).map(({bot}:PhoneAvailabe)=>bot.phone).forEach(phone=>console.log(phone))
+
+        switch (options.action) {
+
+            case 'cargados':
 
 
-        CLIProgram.setNextCommand(this.back!)
-        
+
+                return CLIProgram.setNextCommand(this.back!)
+
+                break;
+            case 'salvados':
+
+                const phones = await PhonesInfo.getAllSavedBots()
+
+
+                CLIUtils.showHorizontalTable(phones)
+                // console.table(phones)
+
+                return CLIProgram.setNextCommand(this.back!)
+                break;
+            case 'atras':
+
+                return CLIProgram.setNextCommand(this.back!)
+                break;
+
+        }
+
+
+        return CLIProgram.setNextCommand(this.back!)
+
     }
-    
-    ListOptions = ():QuestionCollection<any> => {
-        
-        const options = Array.prototype.concat(PhonesInfo.ListPhonesTypes(), ['atras'])
-        
-        
-        
+
+    ListOptions = (): QuestionCollection<any> => {
+
+        const options = Array.prototype.concat('cargados', 'salvados', 'atras')
+
+
+
         // this.printPhones()
 
 
@@ -39,9 +66,9 @@ export class ListPhones implements CLICommand {
         return {
             type: 'list',
             name: 'action',
-            message: 'Selecciona una opcion',
+            message: '',
             choices: options,
-          };
+        };
 
 
     }
@@ -64,7 +91,7 @@ export class ListPhones implements CLICommand {
 
                 const botDir = process.env.PATHTOPHONES + dir
 
-                return fs.readdirSync(botDir).map(phoneDir =>`${botDir}/${phoneDir}` )
+                return fs.readdirSync(botDir).map(phoneDir => `${botDir}/${phoneDir}`)
             })
 
 

@@ -2,11 +2,15 @@ import inquirer, { QuestionCollection } from "inquirer";
 import { Observable, concatMap, from, fromEvent, of, repeat, retry, tap } from 'rxjs';
 // import { ProgramCLI } from "./cli/classes/ProgramCLI";
 import { CliAction } from "./cli/interfaces/CliAction";
-import { CaptureInput } from "./cli/Commands/utils/CaptureInput";
 import { CLIProgram } from "./cli/classes/CLIProgram";
 import AffiliateModel from "./database/Schemas/Affiliate/Affiliate.schema"
 import mongoose from "mongoose";
+import {conf} from './conf/configuration'
 import { ErrorHandling } from "./ErrorHandling/classes/ErrorHandling";
+import {ConsoleLogger, LogType, ConsoleLogger as cLogging} from '@CampaignCreator/Logging/classes/ConsoleLogger'
+import { BasicDashed, BasicUnderline, BoldErrBG, BoldLogBG, ErrDashed, IndigoColor, OrangeColor, PrimaryColor, SuccessColor, TealColor, WarningColor } from "./Logging/classes/ConsoleStyles";
+
+
 
 const init_ErrorHandling = async():Promise<ErrorHandling>=>{
   const err: ErrorHandling = ErrorHandling.ErrorHandlingInstance
@@ -16,9 +20,14 @@ const init_ErrorHandling = async():Promise<ErrorHandling>=>{
 
 const init_moongoose = async()=>{
 
- return await mongoose.connect(process.env.MONGOCONNECTIONSTRING!)
+
+
+ return await mongoose.connect(conf().Mongo.connectionString)
   .then(() => {
-    console.log('Conexión exitosa a la base de datos');
+    cLogging.logger.setLogStyle(LogType.log ,new SuccessColor())
+    
+    cLogging.logger.log('Conexión exitosa a la base de datos');
+    cLogging.logger.resetLog()
   })
   .catch((error) => {
     console.error('Error de conexión a la base de datos:', error);
@@ -33,57 +42,17 @@ const init_moongoose = async()=>{
   }, wait*1000);
 }
 
-const init_InputCaptures = ()=>{
-
-  const captureCtrlD = new CaptureInput()
-  // const captureCtrlA = new CaptureInput('A',true)
-  // const captureCtrlR = new CaptureInput('R',true)
-
-  captureCtrlD.inputCaptured('r',true).subscribe({
-    next:(val)=>{
-
-      !!val &&console.clear()
-
-      !!val &&console.log('pantalla borrada')
-      !!val &&console.log('presiona una tecla ↓ para continuar')
-    }
-  })
-
-  captureCtrlD.inputCaptured('a',true).subscribe({
-    next:(val)=>{
-
-      !!val && CLIProgram.closeCurrentPrompt()
-      !!val &&console.clear()
-      !!val && CLIProgram.backToBegining()
-
-
-    }
-  })
-
-
-  // captureCtrlA.inputCaptured().subscribe({
-  //   next:(val)=>console.log(val)
-  // })
-
-  // captureCtrlR.inputCaptured().subscribe({
-  //   next:(val)=>console.log(val)
-  // })
-
-
-}
 
 const main = async () => {
+
 
    await init_moongoose()
 
    const errorHandler = await init_ErrorHandling()
 
-   init_InputCaptures()
-
-    // new CaptureInput('a', true).inputCaptured().subscribe((val)=>console.log(val))
+   console.clear()
 
 
-    console.clear()
 
      const cli = new CLIProgram()
 
@@ -92,7 +61,12 @@ const main = async () => {
      CLIProgram.menuNext.subscribe({
         next:async(options:CliAction)=>
         await CLIProgram.nextCommand.manageOptions(options),
-        complete:()=>console.log('complete')
+        complete:()=> {
+          
+          cLogging.logger.setLogStyle(LogType.log ,new SuccessColor())
+          cLogging.logger.log('complete')
+          cLogging.logger.resetLog()
+        }
      })
 
 

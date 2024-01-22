@@ -8,10 +8,11 @@
   "type": "commonjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rm -rf dist  && tsup src/Main.ts --format cjs,esm --dts",
+    "build": "rm -rf dist  && tsup src/Main.ts --format cjs,esm --dts && cp .env dist/",
     "lint": "rm -rf dist  && tsc",
     "buildps": "(mkdir dist || rd /q /s dist)  && npx tsc --project tsconfig.json",
     "start": "node dist/Main.js",
+    "restart": "npm run lint && npm run build && npm run start",
     "runps": "npm run buildps && npm run start"
   },
   "author": "",
@@ -24,7 +25,7 @@
     "async-mutex": "^0.4.0",
     "axios": "^1.6.2",
     "cd": "^0.3.3",
-    "chalk": "^5.3.0",
+    "chalk": "^4.1.2",
     "cli-table": "^0.3.11",
     "dotenv": "^16.3.1",
     "enquirer": "^2.4.1",

@@ -1,5 +1,5 @@
-import { ClientEvents } from "./transformers/Factories/interfaces/Client";
-import { ClientVenom } from "./transformers/venom/venom"
+import { ClientEvents } from "../transformers/Factories/interfaces/Client";
+import { ClientVenom } from "../transformers/venom/venom"
 
 
 const main = async () => {

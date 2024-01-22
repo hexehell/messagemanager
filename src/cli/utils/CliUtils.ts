@@ -1,11 +1,19 @@
+import fs from 'fs'
 import Table from "cli-table"
 import { ObjectUnsubscribedError } from "rxjs";
 import { v4 as uuid } from 'uuid'
 
 export class CLIUtils {
 
+    static async createEnterToContinue(message:string){
 
-    static async createInput({ name, message, initial }: FormPromptChoice): Promise<PromptAnswer> {
+
+        await CLIUtils.createInput({name:'enter',message:message} as PromptInput )
+
+    }
+
+
+    static async createInput({ name, message, initial }: PromptInput): Promise<PromptAnswer> {
 
         const { Input } = require('enquirer');
         const prompt = new Input({
@@ -36,7 +44,7 @@ export class CLIUtils {
     }
 
 
-    static async createForm(message: string, choices: FormPromptChoice[]): Promise<any> {
+    static async createForm(message: string, choices: PromptInput[]): Promise<any> {
 
         const { Form } = require('enquirer');
 
@@ -52,7 +60,7 @@ export class CLIUtils {
 
     }
 
-    static async createDateTimePicker({ name, message }: FormPromptChoice) {
+    static async createDateTimePicker({ name, message }: PromptInput) {
 
         const inquirer = require('inquirer');
 
@@ -192,21 +200,21 @@ export interface PromptAnswer {
     field: string
 }
 
-export interface FormPromptChoice {
+export interface PromptInput {
     name: string
     message: string
     initial: string
 }
 
-export interface FormPromptChoiceYesNo extends FormPromptChoice {
+export interface FormPromptChoiceYesNo extends PromptInput {
     yesnoQuestion: boolean
 }
 
-export interface FormPromptChoiceDatePicker extends FormPromptChoice {
+export interface FormPromptChoiceDatePicker extends PromptInput {
     date: boolean
 }
 
-export interface FormPromptChoiceAutoComplete extends FormPromptChoice {
+export interface FormPromptChoiceAutoComplete extends PromptInput {
     autocomplete: any[]
     fieldToShow?: string
 }

@@ -2,7 +2,7 @@ import { MessageSender } from "@CampaignCreator/Sender/MessageSender";
 import { CLIProgram } from "@CampaignCreator/cli/classes/CLIProgram";
 import { CliAction } from "@CampaignCreator/cli/interfaces/CliAction";
 import { CLICommand } from "@CampaignCreator/cli/interfaces/Command.Factory";
-import { CLIUtils, FormPromptChoice, FormPromptChoiceAutoComplete } from "@CampaignCreator/cli/utils/CliUtils";
+import { CLIUtils, PromptInput, FormPromptChoiceAutoComplete } from "@CampaignCreator/cli/utils/CliUtils";
 import { PhonesInfo } from "@CampaignCreator/transformers/PhonesInfo";
 import { QuestionCollection } from "inquirer";
 
@@ -27,7 +27,7 @@ export class TestMessage implements CLICommand {
 
 
 
-        const phoneTo = await CLIUtils.createInput({ name: 'message', message: 'escribie el telefono prueba' } as FormPromptChoice)
+        const phoneTo = await CLIUtils.createInput({ name: 'message', message: 'escribie el telefono prueba' } as PromptInput)
 
 
         const sender = new MessageSender(PhonesInfo.getClientByPhone(options.action as string)!)
@@ -59,8 +59,8 @@ export class TestMessage implements CLICommand {
     ListOptions = (options?: CliAction | undefined): QuestionCollection<any> => ({
         type: 'list',
         name: 'action',
-        message: 'Selecciona una opcion',
-        choices: Array.prototype.concat(PhonesInfo.getAllAvailablePhonesForChoosing(), ['atras'])
+        message: '',
+        choices: Array.prototype.concat(PhonesInfo.listAllAvailablePhonesForChoosing(), ['atras'])
 
     })
 
